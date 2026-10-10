@@ -5,7 +5,7 @@ import { HOUR, MINUTE, addDays, clamp, format, formatTimeRange, isSameDay, snap,
 import { findRowIndex, layoutLanes } from '../../core/layout.js';
 import { h, raf } from '../dom.js';
 import { startDrag } from '../drag.js';
-import { eventContent, eventProps, resolveColor } from '../content.js';
+import { eventContent, eventProps, resolveColor, canMove, canResize, canReassign, isBackground, backgroundResources } from '../content.js';
 
 const OVERSCAN = 300;
 const UNASSIGNED = '__unassigned__';
@@ -34,7 +34,7 @@ export class TimelineView {
   }
 
   get pxPerHour() {
-    return this.cal.zoom;
+    return this.cal.zoom * (this.cal.scale || 1);
   }
 
   xOf(d) {
@@ -54,24 +54,34 @@ export class TimelineView {
   render() {
     const cal = this.cal;
     const { config, instances, locale } = cal;
-    const { workingHours, workingDays, rowHeight, laneHeight, resourceColumnWidth: RES_W, timelineDays: days } = config;
+    const { workingHours, workingDays, timelineDays: days } = config;
+    const { rowHeight, laneHeight, resourceColumnWidth: RES_W } = cal.metrics;
     this.rangeStart = cal.range.start;
     this.rangeEnd = cal.range.end;
     this.days = days;
     const pxh = this.pxPerHour;
     const totalW = days * 24 * pxh;
     this.totalW = totalW;
-    const now = new Date();
+    const now = cal.now();
 
     // rows: one per visible resource (+ "Unassigned" when needed)
     const byRes = new Map();
+    const bgs = [];
     for (const inst of instances) {
+      if (isBackground(inst)) {
+        bgs.push(inst);
+        continue;
+      }
       const key = inst.resourceId == null ? UNASSIGNED : inst.resourceId;
       if (!byRes.has(key)) byRes.set(key, []);
       byRes.get(key).push(inst);
     }
-    const rows = cal.visibleResources.map((r) => ({ key: r.id, resource: r, items: byRes.get(r.id) || [] }));
-    if (byRes.has(UNASSIGNED) && config.showUnassigned) rows.unshift({ key: UNASSIGNED, resource: null, items: byRes.get(UNASSIGNED) });
+    const rowsBg = (id) => bgs.filter((b) => {
+      const ids = backgroundResources(b);
+      return !ids || ids.includes(id);
+    });
+    const rows = cal.visibleResources.map((r) => ({ key: r.id, resource: r, items: byRes.get(r.id) || [], bg: rowsBg(r.id) }));
+    if (byRes.has(UNASSIGNED) && config.showUnassigned) rows.unshift({ key: UNASSIGNED, resource: null, items: byRes.get(UNASSIGNED), bg: [] });
     let top = 0;
     for (const row of rows) {
       const { placed, laneCount } = layoutLanes(row.items);
@@ -130,7 +140,7 @@ export class TimelineView {
           h('div', { class: 'ck-nonwork', style: { left: left + workingHours.end * pxh, width: (24 - workingHours.end) * pxh } }),
         ];
       }),
-      now >= this.rangeStart && now < this.rangeEnd && h('div', { class: 'ck-now ck-now-v', style: { left: this.xOf(now) } }),
+      config.nowIndicator !== false && now >= this.rangeStart && now < this.rangeEnd && h('div', { class: 'ck-now ck-now-v', style: { left: this.xOf(now) } }),
     );
 
     this.rowsLayer = h('div', { class: 'ck-tl-rows' });
@@ -201,7 +211,7 @@ export class TimelineView {
     if (this._window === key) return;
     this._window = key;
 
-    const { laneHeight, resourceColumnWidth: RES_W } = cal.config;
+    const { laneHeight, resourceColumnWidth: RES_W } = cal.metrics;
     const rangeStart = this.rangeStart;
     const rangeEnd = this.rangeEnd;
     const out = [];
@@ -236,13 +246,27 @@ export class TimelineView {
             height: laneHeight - 4,
             paddingLeft: shift ? shift + 10 : null,
           }, (e) => this.onEventDown(e, inst, 'move')),
-          eventContent(cal, inst, 'timeline', laneHeight < 40),
-          !cal.readOnly && inst.start >= rangeStart && h('span', { class: 'ck-resize ck-resize-x ck-resize-start', onPointerdown: (e) => this.onEventDown(e, inst, 'start') }),
-          !cal.readOnly && inst.end <= rangeEnd && h('span', { class: 'ck-resize ck-resize-x ck-resize-end', onPointerdown: (e) => this.onEventDown(e, inst, 'end') }),
+          eventContent(cal, inst, 'timeline', laneHeight < 40 * (cal.scale || 1)),
+          !cal.readOnly && canResize(inst) && inst.start >= rangeStart && h('span', { class: 'ck-resize ck-resize-x ck-resize-start', onPointerdown: (e) => this.onEventDown(e, inst, 'start') }),
+          !cal.readOnly && canResize(inst) && inst.end <= rangeEnd && h('span', { class: 'ck-resize ck-resize-x ck-resize-end', onPointerdown: (e) => this.onEventDown(e, inst, 'end') }),
+        );
+      });
+      const bgEls = (row.bg || []).map((inst) => {
+        const s = inst.start < rangeStart ? rangeStart : inst.start;
+        const en = inst.end > rangeEnd ? rangeEnd : inst.end;
+        const x = this.xOf(s);
+        const props = eventProps(cal, inst, 'ck-event-bg ck-event-bg-tl', { left: RES_W + x, width: Math.max(4, this.xOf(en) - x), top: 0, bottom: 0 }, null);
+        delete props.onPointerdown;
+        delete props.tabindex;
+        return h(
+          'div',
+          props,
+          h('button', { type: 'button', class: 'ck-bg-label', onPointerdown: (e) => this.onEventDown(e, inst, 'move') }, eventContent(cal, inst, 'timeline', true)),
+          !cal.readOnly && canResize(inst) && inst.end <= rangeEnd && h('span', { class: 'ck-resize ck-resize-x ck-resize-end', onPointerdown: (e) => this.onEventDown(e, inst, 'end') }),
         );
       });
       out.push(
-        h('div', { class: `ck-tl-row${row.key === UNASSIGNED ? ' ck-tl-unassigned' : ''}`, style: { top: row.top, height: row.height }, dataset: { row: String(i) } }, resCell, events),
+        h('div', { class: `ck-tl-row${row.key === UNASSIGNED ? ' ck-tl-unassigned' : ''}`, style: { top: row.top, height: row.height }, dataset: { row: String(i) } }, resCell, bgEls, events),
       );
     }
     this.rowsLayer.replaceChildren(...out);
@@ -252,7 +276,7 @@ export class TimelineView {
 
   hit(x, y) {
     const r = this.bodyEl.getBoundingClientRect();
-    const RES_W = this.cal.config.resourceColumnWidth;
+    const RES_W = this.cal.metrics.resourceColumnWidth;
     const xx = clamp(x - r.left - RES_W, 0, this.totalW);
     const idx = clamp(findRowIndex(this.offsets, y - r.top), 0, Math.max(0, this.rows.length - 1));
     return { time: this.timeAt(xx), rowIdx: idx, row: this.rows[idx] };
@@ -271,7 +295,7 @@ export class TimelineView {
     this.clearGhost();
     const row = this.rows[g.rowIdx];
     if (!row) return;
-    const { laneHeight, resourceColumnWidth: RES_W } = this.cal.config;
+    const { laneHeight, resourceColumnWidth: RES_W } = this.cal.metrics;
     this.ghost = h(
       'div',
       {
@@ -303,7 +327,10 @@ export class TimelineView {
     const h0 = this.hit(e.clientX, e.clientY);
     const grab = h0.time - inst.start;
     const dur = inst.end - inst.start;
-    const homeRow = this.rows.findIndex((r) => r.key === (inst.resourceId ?? UNASSIGNED));
+    const homeRow = Math.max(0, isBackground(inst) ? h0.rowIdx : this.rows.findIndex((r) => r.key === (inst.resourceId ?? UNASSIGNED)));
+    const allowed = !cal.readOnly && (mode === 'move' ? canMove(inst) || canReassign(inst) : canResize(inst));
+    // background events shade several rows: they never change resource by dragging
+    const reassign = canReassign(inst) && !isBackground(inst);
     let preview = null;
     // the source element can be re-created by row virtualization while dragging
     const setDragging = (on) => {
@@ -312,18 +339,22 @@ export class TimelineView {
     };
     startDrag(e, {
       scrollEl: this.scrollEl,
-      onStart: () => !cal.readOnly && setDragging(true),
+      onStart: () => allowed && setDragging(true),
       onMove: (ev) => {
-        if (cal.readOnly) return;
+        if (!allowed) return;
         const hh = this.hit(ev.clientX, ev.clientY);
         let { start, end } = inst;
         let rowIdx = homeRow;
         let resourceId = inst.resourceId;
         if (mode === 'move') {
-          start = this.snapTime(new Date(hh.time - grab));
-          end = new Date(start.getTime() + dur);
-          rowIdx = hh.rowIdx;
-          resourceId = this.resourceIdOf(hh.row);
+          if (canMove(inst)) {
+            start = this.snapTime(new Date(hh.time - grab));
+            end = new Date(start.getTime() + dur);
+          }
+          if (reassign) {
+            rowIdx = hh.rowIdx;
+            resourceId = this.resourceIdOf(hh.row);
+          }
         } else if (mode === 'end') {
           end = this.snapTime(hh.time);
           if (end - start < snapMinutes * MINUTE) end = new Date(start.getTime() + snapMinutes * MINUTE);
@@ -355,9 +386,23 @@ export class TimelineView {
 
   onLaneDown(e) {
     const cal = this.cal;
-    if (e.button !== 0 || cal.readOnly || e.pointerType === 'touch' || e.target.closest('.ck-event, .ck-tl-res') || !this.rows.length) return;
+    if (e.button !== 0 || e.target.closest('.ck-event:not(.ck-event-bg), .ck-bg-label, .ck-resize, .ck-tl-res') || !this.rows.length) return;
     const { snapMinutes } = cal.config;
     const h0 = this.hit(e.clientX, e.clientY);
+    const clickInfo = () => ({ date: new Date(this.rangeStart.getTime() + floorTo((h0.time - this.rangeStart) / MINUTE, snapMinutes) * MINUTE), allDay: false, resourceId: this.resourceIdOf(h0.row) });
+    // a plain click inside a background event on this row opens it; elsewhere it is a dateClick
+    const click = (ev) => {
+      const bg = (h0.row?.bg || []).find((i) => i.start <= h0.time && i.end > h0.time);
+      if (bg) cal.eventClick(bg, ev);
+      else cal.dateClick(clickInfo(), ev);
+    };
+    if (cal.readOnly || e.pointerType === 'touch') {
+      const up = (ev) => {
+        if (Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 4) click(ev);
+      };
+      window.addEventListener('pointerup', up, { once: true });
+      return;
+    }
     const anchor = new Date(this.rangeStart.getTime() + floorTo((h0.time - this.rangeStart) / MINUTE, snapMinutes) * MINUTE);
     let sel = null;
     startDrag(e, {
@@ -372,7 +417,8 @@ export class TimelineView {
       },
       onEnd: (ev, moved) => {
         this.clearGhost();
-        if (moved && sel) cal.openCreate({ start: sel.start, end: sel.end, allDay: false, resourceId: sel.resourceId });
+        if (moved && sel) cal.select({ start: sel.start, end: sel.end, allDay: false, resourceId: sel.resourceId }, ev, 'drag');
+        else if (!moved) click(ev);
       },
       onCancel: () => this.clearGhost(),
     });
@@ -380,10 +426,10 @@ export class TimelineView {
 
   onLaneDoubleClick(e) {
     const cal = this.cal;
-    if (cal.readOnly || e.target.closest('.ck-event, .ck-tl-res') || !this.rows.length) return;
+    if (cal.readOnly || e.target.closest('.ck-event:not(.ck-event-bg), .ck-bg-label, .ck-tl-res') || !this.rows.length) return;
     const hh = this.hit(e.clientX, e.clientY);
     const start = new Date(this.rangeStart.getTime() + floorTo((hh.time - this.rangeStart) / MINUTE, 30) * MINUTE);
-    cal.openCreate({ start, end: new Date(start.getTime() + cal.config.defaultEventDuration * MINUTE), allDay: false, resourceId: this.resourceIdOf(hh.row) });
+    cal.select({ start, end: new Date(start.getTime() + cal.config.defaultEventDuration * MINUTE), allDay: false, resourceId: this.resourceIdOf(hh.row) }, e, 'dblclick');
   }
 
   destroy() {

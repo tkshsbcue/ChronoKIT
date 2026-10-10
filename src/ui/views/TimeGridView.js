@@ -7,9 +7,8 @@ import {
 import { layoutDayRow, layoutTimeGridColumn } from '../../core/layout.js';
 import { h } from '../dom.js';
 import { startDrag } from '../drag.js';
-import { eventContent, eventProps } from '../content.js';
+import { eventContent, eventProps, canMove, canResize, isBackground } from '../content.js';
 
-const ALLDAY_LANE = 24;
 const isAllDayLike = (e) => e.allDay || e.end - e.start >= DAY;
 
 export class TimeGridView {
@@ -29,18 +28,20 @@ export class TimeGridView {
     const { config, instances, locale, readOnly } = cal;
     const days = cal.range.days;
     const n = days.length;
-    const { hourHeight, dayStartHour, dayEndHour, workingHours, workingDays } = config;
+    const { dayStartHour, dayEndHour, workingHours, workingDays } = config;
+    const { hourHeight, allDayLane: ALLDAY_LANE } = cal.metrics;
     this.days = days;
     this.n = n;
     this.rowStart = days[0];
     this.winStartMin = dayStartHour * 60;
     this.winEndMin = dayEndHour * 60;
     const px = (m) => this.px(m);
-    const now = new Date();
+    const now = cal.now();
 
     const allDayItems = [];
     const timedItems = [];
-    for (const i of instances) (isAllDayLike(i) ? allDayItems : timedItems).push(i);
+    const bgItems = [];
+    for (const i of instances) (isBackground(i) ? bgItems : isAllDayLike(i) ? allDayItems : timedItems).push(i);
     const allDay = layoutDayRow(allDayItems, this.rowStart, n);
 
     // header
@@ -79,7 +80,7 @@ export class TimeGridView {
             top: seg.lane * ALLDAY_LANE + 4,
           }, (e) => this.onAllDayDown(e, inst, 'move')),
           eventContent(cal, inst, 'week', true),
-          inst.allDay && !readOnly && !seg.continuesAfter && h('span', { class: 'ck-resize ck-resize-x ck-resize-end', onPointerdown: (e) => this.onAllDayDown(e, inst, 'end') }),
+          inst.allDay && !readOnly && canResize(inst) && !seg.continuesAfter && h('span', { class: 'ck-resize ck-resize-x ck-resize-end', onPointerdown: (e) => this.onAllDayDown(e, inst, 'end') }),
         );
       }),
     );
@@ -108,6 +109,7 @@ export class TimeGridView {
       const ws = atMinutes(day, this.winStartMin);
       const we = atMinutes(day, this.winEndMin);
       const segs = layoutTimeGridColumn(timedItems.filter((i) => i.start < we && i.end > ws), ws, we);
+      const bgs = bgItems.filter((i) => i.start < we && i.end > ws);
       const offDay = !workingDays.includes(day.getDay());
       const today = isSameDay(day, now);
       return h(
@@ -119,11 +121,13 @@ export class TimeGridView {
         },
         !offDay && workingHours && workingHours.start * 60 > this.winStartMin && h('div', { class: 'ck-nonwork', style: { top: 0, height: px(workingHours.start * 60) } }),
         !offDay && workingHours && workingHours.end * 60 < this.winEndMin && h('div', { class: 'ck-nonwork', style: { top: px(workingHours.end * 60), bottom: 0 } }),
+        bgs.map((inst) => this.renderBackground(inst, day, ws, we)),
         segs.map((seg) => {
           const inst = seg.item;
           const top = (seg.startMin / 60) * hourHeight;
-          const height = Math.max(18, ((seg.endMin - seg.startMin) / 60) * hourHeight - 2);
-          const short = height < 38;
+          const sc = cal.scale || 1;
+          const height = Math.max(18 * sc, ((seg.endMin - seg.startMin) / 60) * hourHeight - 2);
+          const short = height < 38 * sc;
           return h(
             'div',
             eventProps(cal, inst, `ck-event-timed${short ? ' ck-short' : ''}`, {
@@ -133,11 +137,11 @@ export class TimeGridView {
               width: `calc(${seg.width * 100}% - ${seg.left + seg.width >= 0.999 ? 6 : 2}px)`,
             }, (e) => this.onTimedDown(e, inst, 'move')),
             eventContent(cal, inst, n === 1 ? 'day' : 'week', short),
-            !readOnly && !seg.continuesBefore && h('span', { class: 'ck-resize ck-resize-y ck-resize-start', onPointerdown: (e) => this.onTimedDown(e, inst, 'start') }),
-            !readOnly && !seg.continuesAfter && h('span', { class: 'ck-resize ck-resize-y ck-resize-end', onPointerdown: (e) => this.onTimedDown(e, inst, 'end') }),
+            !readOnly && canResize(inst) && !seg.continuesBefore && h('span', { class: 'ck-resize ck-resize-y ck-resize-start', onPointerdown: (e) => this.onTimedDown(e, inst, 'start') }),
+            !readOnly && canResize(inst) && !seg.continuesAfter && h('span', { class: 'ck-resize ck-resize-y ck-resize-end', onPointerdown: (e) => this.onTimedDown(e, inst, 'end') }),
           );
         }),
-        today && nowMin >= this.winStartMin && nowMin <= this.winEndMin && h('div', { class: 'ck-now', style: { top: px(nowMin) } }),
+        today && config.nowIndicator !== false && nowMin >= this.winStartMin && nowMin <= this.winEndMin && h('div', { class: 'ck-now', style: { top: px(nowMin) } }),
       );
     });
 
@@ -160,8 +164,32 @@ export class TimeGridView {
     head.style.paddingRight = allDayRow.style.paddingRight = `${sbw > 0 ? sbw : 0}px`;
   }
 
+  /** A background event: a shaded block behind the events; only its label strip takes the pointer. */
+  renderBackground(inst, day, ws, we) {
+    const cal = this.cal;
+    const s = inst.start < ws ? ws : inst.start;
+    const en = inst.end > we ? we : inst.end;
+    const startMin = (s - startOfDay(day)) / MINUTE;
+    const endMin = (en - startOfDay(day)) / MINUTE;
+    const top = this.px(startMin);
+    const height = Math.max(8, this.px(endMin) - top);
+    const props = eventProps(cal, inst, 'ck-event-bg', { top, height }, null);
+    delete props.onPointerdown;
+    delete props.tabindex;
+    return h(
+      'div',
+      props,
+      h(
+        'button',
+        { type: 'button', class: 'ck-bg-label', onPointerdown: (e) => this.onTimedDown(e, inst, 'move') },
+        eventContent(cal, inst, this.n === 1 ? 'day' : 'week', true),
+      ),
+      !cal.readOnly && canResize(inst) && inst.end <= we && h('span', { class: 'ck-resize ck-resize-y ck-resize-end', onPointerdown: (e) => this.onTimedDown(e, inst, 'end') }),
+    );
+  }
+
   px(minutes) {
-    return ((minutes - this.winStartMin) / 60) * this.cal.config.hourHeight;
+    return ((minutes - this.winStartMin) / 60) * this.cal.metrics.hourHeight;
   }
 
   // ------------------------------------------------------------ hit testing
@@ -174,7 +202,7 @@ export class TimeGridView {
     });
     if (idx === -1) idx = x < cols[0].getBoundingClientRect().left ? 0 : this.n - 1;
     const r = cols[idx].getBoundingClientRect();
-    const minutes = clamp(this.winStartMin + ((y - r.top) / this.cal.config.hourHeight) * 60, this.winStartMin, this.winEndMin);
+    const minutes = clamp(this.winStartMin + ((y - r.top) / this.cal.metrics.hourHeight) * 60, this.winStartMin, this.winEndMin);
     return { idx, day: this.days[idx], minutes };
   }
 
@@ -248,12 +276,13 @@ export class TimeGridView {
     const h0 = this.hitTimed(e.clientX, e.clientY);
     const grab = (atMinutes(h0.day, h0.minutes) - inst.start) / MINUTE;
     const dur = (inst.end - inst.start) / MINUTE;
+    const allowed = !cal.readOnly && (mode === 'move' ? canMove(inst) : canResize(inst));
     let preview = null;
     startDrag(e, {
       scrollEl: this.scrollEl,
-      onStart: () => !cal.readOnly && srcEl.classList.add('ck-is-dragging'),
+      onStart: () => allowed && srcEl.classList.add('ck-is-dragging'),
       onMove: (ev) => {
-        if (cal.readOnly) return;
+        if (!allowed) return;
         const hh = this.hitTimed(ev.clientX, ev.clientY);
         let { start, end } = inst;
         if (mode === 'move') {
@@ -288,9 +317,23 @@ export class TimeGridView {
 
   onColumnDown(e) {
     const cal = this.cal;
-    if (e.button !== 0 || cal.readOnly || e.pointerType === 'touch' || e.target.closest('.ck-event')) return;
+    if (e.button !== 0 || e.target.closest('.ck-event:not(.ck-event-bg), .ck-bg-label, .ck-resize')) return;
     const { snapMinutes } = cal.config;
     const h0 = this.hitTimed(e.clientX, e.clientY);
+    // a plain click inside a background event opens it; elsewhere it is a dateClick
+    const click = (ev) => {
+      const at = atMinutes(h0.day, h0.minutes);
+      const bg = cal.instances.find((i) => isBackground(i) && i.start <= at && i.end > at);
+      if (bg) cal.eventClick(bg, ev);
+      else cal.dateClick({ date: atMinutes(h0.day, floorTo(h0.minutes, snapMinutes)), allDay: false }, ev);
+    };
+    if (cal.readOnly || e.pointerType === 'touch') {
+      const up = (ev) => {
+        if (Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 4) click(ev);
+      };
+      window.addEventListener('pointerup', up, { once: true });
+      return;
+    }
     const anchor = floorTo(h0.minutes, snapMinutes);
     let sel = null;
     startDrag(e, {
@@ -302,7 +345,8 @@ export class TimeGridView {
       },
       onEnd: (ev, moved) => {
         this.clearGhost();
-        if (moved && sel) cal.openCreate({ start: sel.start, end: sel.end, allDay: false });
+        if (moved && sel) cal.select({ start: sel.start, end: sel.end, allDay: false }, ev, 'drag');
+        else if (!moved) click(ev);
       },
       onCancel: () => this.clearGhost(),
     });
@@ -310,10 +354,10 @@ export class TimeGridView {
 
   onColumnDoubleClick(e) {
     const cal = this.cal;
-    if (cal.readOnly || e.target.closest('.ck-event')) return;
+    if (cal.readOnly || e.target.closest('.ck-event:not(.ck-event-bg), .ck-bg-label')) return;
     const hh = this.hitTimed(e.clientX, e.clientY);
     const s = floorTo(hh.minutes, 30);
-    cal.openCreate({ start: atMinutes(hh.day, s), end: atMinutes(hh.day, s + cal.config.defaultEventDuration), allDay: false });
+    cal.select({ start: atMinutes(hh.day, s), end: atMinutes(hh.day, s + cal.config.defaultEventDuration), allDay: false }, e, 'dblclick');
   }
 
   // ------------------------------------------------------------ all-day strip
@@ -326,11 +370,12 @@ export class TimeGridView {
     cal.hideTooltip();
     cal.setSelected(inst.instanceId);
     const grabIdx = this.hitAllDay(e.clientX);
+    const allowed = !cal.readOnly && (mode === 'move' ? canMove(inst) : canResize(inst));
     let preview = null;
     startDrag(e, {
-      onStart: () => !cal.readOnly && srcEl.classList.add('ck-is-dragging'),
+      onStart: () => allowed && srcEl.classList.add('ck-is-dragging'),
       onMove: (ev) => {
-        if (cal.readOnly) return;
+        if (!allowed) return;
         const idx = this.hitAllDay(ev.clientX);
         let { start, end } = inst;
         if (mode === 'move') {
@@ -371,7 +416,8 @@ export class TimeGridView {
       },
       onEnd: (ev, moved) => {
         this.clearGhost();
-        if (moved && sel) cal.openCreate({ start: sel.start, end: sel.end, allDay: true });
+        if (moved && sel) cal.select({ start: sel.start, end: sel.end, allDay: true }, ev, 'drag');
+        else if (!moved) cal.dateClick({ date: addDays(this.rowStart, a), allDay: true }, ev);
       },
       onCancel: () => this.clearGhost(),
     });
@@ -381,7 +427,7 @@ export class TimeGridView {
     const cal = this.cal;
     if (cal.readOnly || e.target.closest('.ck-event')) return;
     const idx = this.hitAllDay(e.clientX);
-    cal.openCreate({ start: addDays(this.rowStart, idx), end: addDays(this.rowStart, idx + 1), allDay: true });
+    cal.select({ start: addDays(this.rowStart, idx), end: addDays(this.rowStart, idx + 1), allDay: true }, e, 'dblclick');
   }
 
   destroy() {

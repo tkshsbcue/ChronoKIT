@@ -160,8 +160,11 @@ export class Project extends Emitter {
 
   // ---------------------------------------------------------------- loading
 
-  /** Replace data. Clears undo history and pending changes. Omitted keys are left untouched. */
-  loadData({ events, resources } = {}) {
+  /**
+   * Replace data. Clears undo history and pending changes. Omitted keys are left untouched.
+   * `keepHistory: true` keeps undo/redo (for data reloaded from a server after an edit).
+   */
+  loadData({ events, resources } = {}, { keepHistory = false } = {}) {
     if (resources) {
       this._resources.clear();
       this._resourceOrder = [];
@@ -178,8 +181,10 @@ export class Project extends Emitter {
         this._events.set(rec.id, rec);
       }
     }
-    this._undo = [];
-    this._redo = [];
+    if (!keepHistory) {
+      this._undo = [];
+      this._redo = [];
+    }
     this._changes = freshChangeState();
     this._bump({ type: 'load' });
   }
@@ -399,6 +404,28 @@ export class Project extends Emitter {
     this._undo.push(entry);
     this._bump({ type: 'redo', label: entry.label });
     return true;
+  }
+
+  /** The step `undo()` / `redo()` would replay next: { label, ops }. */
+  peekUndo() {
+    return this._undo[this._undo.length - 1] ?? null;
+  }
+
+  peekRedo() {
+    return this._redo[this._redo.length - 1] ?? null;
+  }
+
+  /** Forget the next undo / redo step without applying it (e.g. the server refused it). */
+  dropUndo() {
+    const entry = this._undo.pop() ?? null;
+    if (entry) this._bump({ type: 'history' });
+    return entry;
+  }
+
+  dropRedo() {
+    const entry = this._redo.pop() ?? null;
+    if (entry) this._bump({ type: 'history' });
+    return entry;
   }
 
   clearHistory() {

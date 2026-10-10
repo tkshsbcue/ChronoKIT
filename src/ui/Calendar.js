@@ -11,22 +11,24 @@ import { Emitter } from '../core/emitter.js';
 import { Project } from '../core/project.js';
 import { CrudManager } from '../core/crud.js';
 import { addDays, addMonths, clamp, format, startOfDay, startOfWeek, toDate } from '../core/date.js';
-import { h, keepFocus, raf, cancelRaf } from './dom.js';
+import { h, keepFocus, raf, cancelRaf, fromHTML } from './dom.js';
 import { buildToolbar } from './Toolbar.js';
 import { buildSidebar } from './Sidebar.js';
 import { EventEditor, askScope } from './EventEditor.js';
-import { tooltipContent, resolveColor, EVENT_COLORS } from './content.js';
+import { tooltipContent, resolveColor, EVENT_COLORS, canMove, canResize, canReassign } from './content.js';
 import { TimeGridView, weekDays } from './views/TimeGridView.js';
 import { MonthView, monthGrid } from './views/MonthView.js';
 import { TimelineView } from './views/TimelineView.js';
+import { ListView, listRange } from './views/ListView.js';
 
-const VIEW_TYPES = ['day', 'week', 'month', 'timeline'];
+const VIEW_TYPES = ['day', 'week', 'month', 'timeline', 'list'];
+const DEFAULT_VIEWS = ['day', 'week', 'month', 'timeline'];
 const FALLBACK_COLOR = EVENT_COLORS.cobalt;
 
 /** Default configuration. Every key can be passed to `new Calendar({...})` or `setConfig()`. */
 export const DEFAULTS = {
   view: 'week',
-  views: VIEW_TYPES,
+  views: DEFAULT_VIEWS,
   height: 720,
   readOnly: false,
   locale: undefined,
@@ -54,7 +56,27 @@ export const DEFAULTS = {
   toolbarItems: null,
   sidebarItems: null,
   cls: '',
+  // 0.2
+  editor: true,
+  showToolbar: true,
+  tooltip: true,
+  nowIndicator: true,
+  now: null,
+  eventSource: null,
+  listRange: 'week',
+  listShowEmpty: false,
+  listEmptyText: 'Nothing scheduled',
+  viewLabels: null,
+  scale: 1,
+  resourceFilterCollapsed: false,
+  editorSections: null,
+  editorLabels: null,
+  editorActions: null,
+  editorReadOnly: false,
+  assigneeLabel: null,
 };
+
+export { canMove, canResize, canReassign } from './content.js';
 
 function formatRange(a, b, locale) {
   const opts = { month: 'short', day: 'numeric', year: 'numeric' };
@@ -94,9 +116,10 @@ export class Calendar extends Emitter {
 
     this._view = VIEW_TYPES.includes(this.config.view) ? this.config.view : 'week';
     // toDate() reads 'YYYY-MM-DD' as local midnight (new Date() would read it as UTC)
-    this._date = startOfDay((date && toDate(date)) || new Date());
+    this._date = startOfDay((date && toDate(date)) || this.now());
     this.hiddenResources = new Set();
     this.sidebarOpen = true;
+    this.filterCollapsed = !!this.config.resourceFilterCollapsed;
     this.zoom = this.config.timelineHourWidth;
     this.selectedId = null;
     this._views = {};
@@ -105,6 +128,9 @@ export class Calendar extends Emitter {
     this._tipTimer = 0;
     this._rafId = 0;
     this._cacheKey = null;
+    this._rangeKey = null;
+    this._loadSeq = 0;
+    this.loading = false;
 
     // DOM skeleton
     this.toolbarEl = h('div', { class: 'ck-toolbar' });
@@ -209,11 +235,31 @@ export class Calendar extends Emitter {
 
   /** Move one period back / forward (day, week, month or timeline range). */
   shift(dir) {
-    const { view, date } = this;
-    if (view === 'day') return this.setDate(addDays(date, dir));
-    if (view === 'month') return this.setDate(addMonths(date, dir));
-    if (view === 'timeline') return this.setDate(addDays(date, dir * this.config.timelineDays));
-    return this.setDate(addDays(date, dir * 7));
+    return this.setDate(this._shiftedDate(dir));
+  }
+
+  /** The date one period back / forward, without moving there. */
+  _shiftedDate(dir, view = this.view, date = this.date) {
+    if (view === 'day') return addDays(date, dir);
+    if (view === 'month') return addMonths(date, dir);
+    if (view === 'timeline') return addDays(date, dir * this.config.timelineDays);
+    if (view === 'list') {
+      const r = this.config.listRange;
+      if (r === 'day') return addDays(date, dir);
+      if (r === 'month') return addMonths(date, dir);
+    }
+    return addDays(date, dir * 7);
+  }
+
+  /** The range a view shows for a date: { start, end }. */
+  rangeFor(date = this.date, view = this.view) {
+    const r = this._computeRange(view, startOfDay(toDate(date)));
+    return { start: r.start, end: r.end, view };
+  }
+
+  /** The ranges Previous and Next would show, e.g. to fetch them ahead. */
+  adjacentRanges() {
+    return [this.rangeFor(this._shiftedDate(-1)), this.rangeFor(this._shiftedDate(1))];
   }
 
   next() {
@@ -225,7 +271,12 @@ export class Calendar extends Emitter {
   }
 
   today() {
-    return this.setDate(new Date());
+    return this.setDate(this.now());
+  }
+
+  /** The current time as the calendar sees it (`config.now()`, e.g. a clinic's wall clock). */
+  now() {
+    return (typeof this.config.now === 'function' && toDate(this.config.now())) || new Date();
   }
 
   /** Open the day view for a date (falls back to just moving the date). */
@@ -239,7 +290,11 @@ export class Calendar extends Emitter {
   setConfig(patch) {
     Object.assign(this.config, patch);
     if ('timelineHourWidth' in patch) this.zoom = patch.timelineHourWidth;
-    if ('view' in patch) this._view = patch.view;
+    if ('view' in patch && VIEW_TYPES.includes(patch.view) && patch.view !== this._view) {
+      this._view = patch.view;
+      this.emit('viewChange', { view: patch.view, calendar: this });
+    }
+    if ('eventSource' in patch) this._rangeKey = null;
     this._cacheKey = null;
     return this.renderNow();
   }
@@ -251,6 +306,12 @@ export class Calendar extends Emitter {
 
   toggleSidebar(open = !this.sidebarOpen) {
     this.sidebarOpen = open;
+    return this.renderNow();
+  }
+
+  /** Fold the sidebar's people list away (or open it again); the show / hide choices are kept. */
+  toggleResourceFilter(collapsed = !this.filterCollapsed) {
+    this.filterCollapsed = collapsed;
     return this.renderNow();
   }
 
@@ -301,9 +362,52 @@ export class Calendar extends Emitter {
     return this;
   }
 
+  /**
+   * A time range was picked on empty space (drag across it, or double-click).
+   * Fires `select`; any listener returning false, or `editor: false`, stops the
+   * built-in editor from opening.
+   */
+  select(draft, domEvent = null, source = 'drag') {
+    if (this.readOnly) return this;
+    const info = { start: draft.start, end: draft.end, allDay: !!draft.allDay, resourceId: draft.resourceId ?? null, source, domEvent, calendar: this };
+    for (const fn of [...(this._listeners.get('select') || [])]) {
+      if (fn(info) === false) return this;
+    }
+    if (this.config.editor === false) return this;
+    return this.openCreate(draft);
+  }
+
+  /** A single click on empty space. Fires `dateClick` ({ date, allDay, resourceId }). */
+  dateClick(info, domEvent = null) {
+    this.emit('dateClick', { date: info.date, allDay: !!info.allDay, resourceId: info.resourceId ?? null, domEvent, calendar: this });
+    return this;
+  }
+
+  /** Load the visible range again from `eventSource`. */
+  refetch() {
+    this._rangeKey = null;
+    return this.renderNow();
+  }
+
+  /** Undo the last change. It goes through `beforeEventChange` first, so a server can refuse it. */
+  undo() {
+    return this._replay('undo');
+  }
+
+  redo() {
+    return this._replay('redo');
+  }
+
+  /** Close the editor if it is open. */
+  closeEditor() {
+    this._editor?.destroy();
+    this._editor = null;
+    return this;
+  }
+
   /** Open the editor for a new event, prefilled with `draft` ({ start, end, resourceId, … }). */
   openCreate(draft) {
-    if (this.readOnly) return this;
+    if (this.readOnly || this.config.editor === false) return this;
     const d = { title: '', ...draft };
     if (d.resourceId === undefined) d.resourceId = this.visibleResources.length === 1 ? this.visibleResources[0].id : null;
     this._openEditor({ draft: d, isNew: true });
@@ -328,6 +432,7 @@ export class Calendar extends Emitter {
     for (const fn of [...(this._listeners.get('eventClick') || [])]) {
       if (fn({ event: instance, domEvent, calendar: this }) === false) return;
     }
+    if (this.config.editor === false) return;
     this.openEditor(instance);
   }
 
@@ -339,7 +444,13 @@ export class Calendar extends Emitter {
    */
   async commitChange({ type, instance, changes = {}, allowThis = true }) {
     if (this.readOnly) return false;
-    const payload = { type, event: instance, changes, project: this.project, calendar: this };
+    if (instance && (type === 'move' || type === 'resize')) {
+      const moved = (changes.start && +changes.start !== +instance.start) || (changes.end && +changes.end !== +instance.end);
+      if (type === 'move' && moved && !canMove(instance)) return false;
+      if (type === 'resize' && !canResize(instance)) return false;
+      if ('resourceId' in changes && changes.resourceId !== instance.resourceId && !canReassign(instance)) return false;
+    }
+    const payload = { type, event: instance, changes, source: 'ui', project: this.project, calendar: this };
     for (const fn of [...(this._listeners.get('beforeEventChange') || [])]) {
       if ((await fn(payload)) === false) return false;
     }
@@ -360,12 +471,17 @@ export class Calendar extends Emitter {
   }
 
   showTooltip(event, e) {
+    const tip = this.config.tooltip;
+    if (tip === false) return;
     if (e.pointerType === 'touch' || document.body.classList.contains('ck-body-dragging') || this._editor) return;
     clearTimeout(this._tipTimer);
     const { clientX: x, clientY: y } = e;
     this._tipTimer = setTimeout(() => {
       const t = this.tooltipEl;
-      t.replaceChildren(...[tooltipContent(this, event)].flat(2).filter(Boolean));
+      let content = typeof tip === 'function' ? tip({ event, calendar: this }) : null;
+      if (typeof content === 'string') content = fromHTML(content);
+      if (content == null || content === false) content = tooltipContent(this, event);
+      t.replaceChildren(...[content].flat(2).filter(Boolean));
       t.style.setProperty('--ck-ev', this.colorOf(event));
       t.style.left = `${Math.min(x + 14, window.innerWidth - 300)}px`;
       t.style.top = `${Math.min(y + 16, window.innerHeight - 180)}px`;
@@ -380,8 +496,7 @@ export class Calendar extends Emitter {
 
   // ------------------------------------------------------------ internals
 
-  _computeRange() {
-    const { view, date } = this;
+  _computeRange(view = this.view, date = this.date) {
     const { weekStartsOn, timelineDays } = this.config;
     if (view === 'day') return { start: date, end: addDays(date, 1), days: [date] };
     if (view === 'month') {
@@ -392,6 +507,7 @@ export class Calendar extends Emitter {
       const start = timelineDays === 7 ? startOfWeek(date, weekStartsOn) : date;
       return { start, end: addDays(start, timelineDays) };
     }
+    if (view === 'list') return listRange(date, this.config.listRange, weekStartsOn);
     const days = weekDays(date, weekStartsOn, 7);
     return { start: days[0], end: addDays(days[0], 7), days };
   }
@@ -399,7 +515,8 @@ export class Calendar extends Emitter {
   _computeTitle() {
     const { view, date, range, locale } = this;
     if (view === 'day') return format(date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }, locale);
-    if (view === 'month') return format(date, { month: 'long', year: 'numeric' }, locale);
+    if (view === 'month' || (view === 'list' && this.config.listRange === 'month')) return format(date, { month: 'long', year: 'numeric' }, locale);
+    if (view === 'list' && this.config.listRange === 'day') return format(date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }, locale);
     return formatRange(range.start, addDays(range.end, -1), locale);
   }
 
@@ -408,6 +525,7 @@ export class Calendar extends Emitter {
     if (!this._views[key]) {
       if (type === 'month') this._views[key] = new MonthView(this);
       else if (type === 'timeline') this._views[key] = new TimelineView(this);
+      else if (type === 'list') this._views[key] = new ListView(this);
       else this._views[key] = new TimeGridView(this);
     }
     return this._views[key];
@@ -417,6 +535,7 @@ export class Calendar extends Emitter {
     if (!this.el.isConnected && !this.el.parentNode) return;
     const { config, project } = this;
     this.range = this._computeRange();
+    this._checkRange();
     const resources = project.resources;
     this.resourcesById = new Map(resources.map((r) => [r.id, r]));
     this.visibleResources = resources.filter((r) => !this.hiddenResources.has(r.id));
@@ -430,14 +549,16 @@ export class Calendar extends Emitter {
       if (this.selectedId && !this.instances.some((i) => i.instanceId === this.selectedId)) this.selectedId = null;
     }
     this.title = this._computeTitle();
+    this._applyScale();
 
     const root = this.el;
-    root.className = `ck-root${config.readOnly ? ' ck-readonly' : ''}${config.cls ? ` ${config.cls}` : ''}`;
+    root.className = `ck-root${config.readOnly ? ' ck-readonly' : ''}${this.loading ? ' ck-loading' : ''}${config.cls ? ` ${config.cls}` : ''}`;
     root.dataset.theme = config.theme;
     root.style.height = typeof config.height === 'number' ? `${config.height}px` : config.height;
 
     keepFocus(root, () => {
-      this.toolbarEl.replaceChildren(...[buildToolbar(this)].flat(2).filter(Boolean));
+      this.toolbarEl.hidden = config.showToolbar === false;
+      if (config.showToolbar !== false) this.toolbarEl.replaceChildren(...[buildToolbar(this)].flat(2).filter(Boolean));
       const showSidebar = config.showSidebar && this.sidebarOpen;
       this.sidebarEl.hidden = !showSidebar;
       if (showSidebar) this.sidebarEl.replaceChildren(...[buildSidebar(this)].flat(2).filter(Boolean));
@@ -447,6 +568,123 @@ export class Calendar extends Emitter {
     if (this.viewEl.firstChild !== view.el) this.viewEl.replaceChildren(view.el);
     this.viewEl.dataset.view = this.view;
     view.render();
+  }
+
+  /**
+   * `scale` (a number, or 'auto' to follow the calendar's width) multiplies
+   * text and every size the views lay out with, so a big screen is readable.
+   */
+  _computeScale() {
+    const s = this.config.scale;
+    if (s === 'auto') {
+      const w = this.el.clientWidth || 0;
+      return w < 1200 ? 1 : Math.round(Math.min(1.5, Math.max(1, w / 1400)) * 100) / 100;
+    }
+    return Number(s) > 0 ? Number(s) : 1;
+  }
+
+  _applyScale() {
+    const scale = this._computeScale();
+    const c = this.config;
+    const px = (n) => Math.round(n * scale);
+    this.scale = scale;
+    this.metrics = {
+      hourHeight: px(c.hourHeight),
+      rowHeight: px(c.rowHeight),
+      laneHeight: px(c.laneHeight),
+      resourceColumnWidth: px(c.resourceColumnWidth),
+      monthLane: px(22),
+      monthHeader: px(28),
+      allDayLane: px(24),
+    };
+    this.el.style.setProperty('--ck-scale', String(scale));
+  }
+
+  /** Fires `rangeChange` when the visible range changed, and loads it from `eventSource`. */
+  _checkRange() {
+    const { start, end } = this.range;
+    const key = `${this.view}|${+start}|${+end}`;
+    if (key === this._rangeKey) return;
+    this._rangeKey = key;
+    this.emit('rangeChange', { start, end, view: this.view, calendar: this });
+    if (typeof this.config.eventSource === 'function') this._load({ start, end, view: this.view });
+  }
+
+  async _load(range) {
+    const seq = ++this._loadSeq;
+    // a newer range supersedes this one: tell the source so it can cancel its request
+    this._loadAbort?.abort();
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    this._loadAbort = controller;
+    this._setLoading(true);
+    try {
+      const data = await this.config.eventSource({ ...range, signal: controller?.signal, calendar: this });
+      if (seq !== this._loadSeq) return;
+      // null / undefined: the source has nothing new yet, keep what is shown
+      if (data == null) return;
+      const payload = Array.isArray(data) ? { events: data } : data;
+      this.project.loadData({ events: payload.events || [], ...(payload.resources ? { resources: payload.resources } : {}) }, { keepHistory: true });
+      this.emit('load', { ...range, calendar: this });
+    } catch (error) {
+      if (seq !== this._loadSeq) return;
+      this.emit('loadError', { ...range, error, calendar: this });
+    } finally {
+      if (seq === this._loadSeq) this._setLoading(false);
+    }
+  }
+
+  _setLoading(on) {
+    if (this.loading === on) return;
+    this.loading = on;
+    this.el.classList.toggle('ck-loading', on);
+    this.emit('loading', { loading: on, calendar: this });
+  }
+
+  /**
+   * Replays an undo / redo step through `beforeEventChange` (with `source`), so
+   * an app that saves to a server can save it too. If a listener refuses, the
+   * step is dropped from the history instead of being applied.
+   */
+  async _replay(dir) {
+    const { project } = this;
+    const entry = dir === 'undo' ? project.peekUndo() : project.peekRedo();
+    if (!entry || this.readOnly) return false;
+    const ops = dir === 'undo' ? [...entry.ops].reverse().map((op) => project._inverse(op)) : entry.ops;
+    for (const op of ops) {
+      if (op.store !== 'events') continue;
+      const payload = this._replayPayload(op, dir);
+      for (const fn of [...(this._listeners.get('beforeEventChange') || [])]) {
+        if ((await fn(payload)) === false) {
+          if (dir === 'undo') project.dropUndo();
+          else project.dropRedo();
+          return false;
+        }
+      }
+    }
+    // the step may have been dropped while a listener was waiting
+    if ((dir === 'undo' ? project.peekUndo() : project.peekRedo()) !== entry) return false;
+    if (dir === 'undo') project.undo();
+    else project.redo();
+    this.emit('eventChange', { type: dir, source: dir, label: entry.label, project, calendar: this });
+    return true;
+  }
+
+  _replayPayload(op, source) {
+    const base = { source, project: this.project, calendar: this };
+    const asInstance = (rec) => ({ ...rec, instanceId: String(rec.id), masterId: rec.id, isOccurrence: false, occurrenceKey: null });
+    if (op.type === 'add') return { ...base, type: 'create', event: null, changes: { ...op.record } };
+    if (op.type === 'remove') return { ...base, type: 'remove', event: asInstance(op.record), changes: {} };
+    const { before, after } = op;
+    const changes = {};
+    for (const k of ['start', 'end', 'resourceId', 'title', 'allDay']) {
+      const a = before[k];
+      const b = after[k];
+      if (a instanceof Date && b instanceof Date ? +a !== +b : a !== b) changes[k] = b;
+    }
+    const sameLength = +after.end - +after.start === +before.end - +before.start;
+    const timeOnly = Object.keys(changes).every((k) => k === 'start' || k === 'end' || k === 'resourceId');
+    const type = timeOnly ? (sameLength ? 'move' : 'resize') : 'update';
+    return { ...base, type, event: asInstance(before), changes };
   }
 
   _openEditor(state) {
@@ -489,11 +727,11 @@ export class Calendar extends Emitter {
     const k = e.key.toLowerCase();
     if (mod && k === 'z') {
       e.preventDefault();
-      if (e.shiftKey) this.project.redo();
-      else this.project.undo();
+      if (e.shiftKey) this.redo();
+      else this.undo();
     } else if (mod && k === 'y') {
       e.preventDefault();
-      this.project.redo();
+      this.redo();
     } else if (mod && k === 's' && this.crudManager) {
       e.preventDefault();
       this.crudManager.sync().catch(() => {});

@@ -6,7 +6,9 @@
 // Styles live in a separate file so this module works without a bundler:
 //   <link rel="stylesheet" href="chronokit/src/styles.css">
 
-export { Calendar, DEFAULTS } from './ui/Calendar.js';
+export { Calendar, DEFAULTS, canMove, canResize, canReassign } from './ui/Calendar.js';
+export { MiniMonth, MINI_DEFAULTS, buildMiniMonth } from './ui/MiniMonth.js';
+export { listRange } from './ui/views/ListView.js';
 export { EventEditor, askScope } from './ui/EventEditor.js';
 export { EVENT_COLORS, resolveColor } from './ui/content.js';
 export { h, escapeHtml } from './ui/dom.js';

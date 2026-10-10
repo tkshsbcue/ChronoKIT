@@ -1,6 +1,6 @@
 import { h, icon, ICONS } from './dom.js';
 
-const VIEW_LABELS = { day: 'Day', week: 'Week', month: 'Month', timeline: 'Timeline' };
+const VIEW_LABELS = { day: 'Day', week: 'Week', month: 'Month', timeline: 'Timeline', list: 'List' };
 
 function syncStatus(crud) {
   const save = () => crud.sync().catch(() => {});
@@ -34,8 +34,8 @@ export function buildToolbar(cal) {
     h(
       'div',
       { class: 'ck-group' },
-      btn('undo', project.canUndo ? `Undo ${project.undoLabel?.toLowerCase()} (Ctrl+Z)` : 'Nothing to undo', ICONS.undo, () => project.undo(), { disabled: !project.canUndo, 'aria-label': 'Undo' }),
-      btn('redo', project.canRedo ? `Redo ${project.redoLabel?.toLowerCase()} (Ctrl+Shift+Z)` : 'Nothing to redo', ICONS.redo, () => project.redo(), { disabled: !project.canRedo, 'aria-label': 'Redo' }),
+      btn('undo', project.canUndo ? `Undo ${project.undoLabel?.toLowerCase()} (Ctrl+Z)` : 'Nothing to undo', ICONS.undo, () => cal.undo(), { disabled: !project.canUndo, 'aria-label': 'Undo' }),
+      btn('redo', project.canRedo ? `Redo ${project.redoLabel?.toLowerCase()} (Ctrl+Shift+Z)` : 'Nothing to redo', ICONS.redo, () => cal.redo(), { disabled: !project.canRedo, 'aria-label': 'Redo' }),
     ),
     cal.view === 'timeline' &&
       h(
@@ -52,7 +52,7 @@ export function buildToolbar(cal) {
           h(
             'button',
             { type: 'button', role: 'tab', 'aria-selected': String(cal.view === v), class: cal.view === v ? 'ck-on' : '', 'data-key': `view-${v}`, onClick: () => cal.setView(v) },
-            VIEW_LABELS[v] || v,
+            config.viewLabels?.[v] || VIEW_LABELS[v] || v,
           ),
         ),
       ),

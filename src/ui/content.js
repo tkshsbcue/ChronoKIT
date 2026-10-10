@@ -15,6 +15,15 @@ export const EVENT_COLORS = {
 
 export const resolveColor = (c) => (c && EVENT_COLORS[c]) || c || null;
 
+/** Per-event permissions: `editable` sets all three; the specific flags win. */
+const flag = (v, fallback) => (v === undefined || v === null ? fallback : !!v);
+export const canMove = (ev) => flag(ev?.startEditable, flag(ev?.editable, true));
+export const canResize = (ev) => flag(ev?.durationEditable, flag(ev?.editable, true));
+export const canReassign = (ev) => flag(ev?.resourceEditable, flag(ev?.editable, true));
+export const isBackground = (ev) => ev?.display === 'background';
+/** Resources a background event shades: `resourceIds`, else its `resourceId`, else every row (null). */
+export const backgroundResources = (ev) => (Array.isArray(ev.resourceIds) ? ev.resourceIds : ev.resourceId != null ? [ev.resourceId] : null);
+
 const repeatIcon = () => {
   const el = icon(ICONS.repeat, 11);
   el.setAttribute('class', 'ck-icon-repeat');
@@ -34,7 +43,7 @@ export function eventContent(cal, event, view, compact = false) {
   const resource = cal.resourcesById.get(event.resourceId) || null;
   const timeText = event.allDay ? '' : view === 'month' ? formatTime(event.start, locale) : formatTimeRange(event.start, event.end, locale);
   if (config.eventRenderer) {
-    const custom = config.eventRenderer({ event, resource, view, timeText, calendar: cal });
+    const custom = config.eventRenderer({ event, resource, view, timeText, compact, calendar: cal });
     if (custom != null && custom !== false) return typeof custom === 'string' ? fromHTML(custom) : custom;
   }
   const repeats = event.isOccurrence || event.recurringEventId;
@@ -52,9 +61,10 @@ export function eventContent(cal, event, view, compact = false) {
     );
   }
   const showResource = config.showResourceInEvents && resource && view !== 'timeline';
+  if (isBackground(event) && view !== 'list' && view !== 'month') return h('span', { class: 'ck-ev-title' }, title);
   return [
     h('span', { class: 'ck-ev-title' }, title, repeats && repeatIcon()),
-    timeText && h('span', { class: 'ck-ev-time' }, timeText),
+    timeText && view !== 'list' && h('span', { class: 'ck-ev-time' }, timeText),
     showResource && h('span', { class: 'ck-ev-meta' }, resource.name),
   ];
 }
@@ -89,6 +99,8 @@ export function tooltipContent(cal, event) {
 export function eventProps(cal, inst, extraClass, style, onDown) {
   const cls = ['ck-event', extraClass];
   if (inst.instanceId === cal.selectedId) cls.push('ck-selected');
+  if (!canMove(inst) && !canResize(inst)) cls.push('ck-locked');
+  if (inst.classNames) cls.push(...[].concat(inst.classNames));
   return {
     class: cls.filter(Boolean).join(' '),
     style: { ...style, '--ck-ev': cal.colorOf(inst) },
@@ -101,7 +113,7 @@ export function eventProps(cal, inst, extraClass, style, onDown) {
     onKeydown: (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        cal.openEditor(inst);
+        cal.eventClick(inst, e);
       }
     },
     onFocus: () => cal.setSelected(inst.instanceId),

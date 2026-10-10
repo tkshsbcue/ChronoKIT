@@ -66,6 +66,7 @@ export function icon(d, size = 16) {
 export const ICONS = {
   prev: 'M10 3 5 8l5 5',
   next: 'M6 3l5 5-5 5',
+  down: 'M3 6l5 5 5-5',
   close: 'M4 4l8 8M12 4l-8 8',
   undo: 'M5.5 3.5 2.5 6.5l3 3M2.5 6.5h7a4 4 0 0 1 0 8h-2',
   redo: 'M10.5 3.5l3 3-3 3M13.5 6.5h-7a4 4 0 0 0 0 8h2',

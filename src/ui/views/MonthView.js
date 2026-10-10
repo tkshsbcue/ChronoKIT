@@ -5,10 +5,8 @@ import { DAY, addDays, atMinutes, clamp, diffCalendarDays, format, isSameDay, st
 import { layoutDayRow } from '../../core/layout.js';
 import { h } from '../dom.js';
 import { startDrag } from '../drag.js';
-import { eventContent, eventProps } from '../content.js';
+import { eventContent, eventProps, canMove, canResize, isBackground } from '../content.js';
 
-const LANE = 22;
-const HEADER = 28;
 
 export class MonthView {
   constructor(cal) {
@@ -29,9 +27,10 @@ export class MonthView {
     const { gridStart, weeks, month } = cal.range.grid;
     this.gridStart = gridStart;
     this.weeks = weeks;
-    const now = new Date();
+    const now = cal.now();
     const height = this.gridEl.clientHeight;
     const rowHeight = height ? height / weeks : 110;
+    const { monthLane: LANE, monthHeader: HEADER } = cal.metrics;
     const maxLanes = Math.max(1, Math.floor((rowHeight - HEADER - 4) / LANE));
 
     this.headEl.replaceChildren(
@@ -76,7 +75,7 @@ export class MonthView {
         .map((seg) => {
           const inst = seg.item;
           const bar = inst.allDay || inst.end - inst.start >= DAY || seg.endCol > seg.startCol;
-          const cls = [bar ? 'ck-event-bar' : 'ck-event-line', seg.continuesBefore && 'ck-cont-before', seg.continuesAfter && 'ck-cont-after'].filter(Boolean).join(' ');
+          const cls = [bar ? 'ck-event-bar' : 'ck-event-line', isBackground(inst) && 'ck-bg-month', seg.continuesBefore && 'ck-cont-before', seg.continuesAfter && 'ck-cont-after'].filter(Boolean).join(' ');
           return h(
             'div',
             eventProps(cal, inst, cls, {
@@ -85,7 +84,7 @@ export class MonthView {
               top: HEADER + seg.lane * LANE,
             }, (e) => this.onEventDown(e, inst, 'move')),
             eventContent(cal, inst, 'month', true),
-            bar && inst.allDay && !readOnly && !seg.continuesAfter && h('span', { class: 'ck-resize ck-resize-x ck-resize-end', onPointerdown: (e) => this.onEventDown(e, inst, 'end') }),
+            bar && inst.allDay && !readOnly && canResize(inst) && !seg.continuesAfter && h('span', { class: 'ck-resize ck-resize-x ck-resize-end', onPointerdown: (e) => this.onEventDown(e, inst, 'end') }),
           );
         });
 
@@ -117,15 +116,16 @@ export class MonthView {
     cal.hideTooltip();
     cal.setSelected(inst.instanceId);
     const grabDay = this.hitDay(e.clientX, e.clientY);
+    const allowed = !cal.readOnly && (mode === 'move' ? canMove(inst) : canResize(inst));
     let preview = null;
     const reset = () => {
       this.highlight(null);
       srcEl.classList.remove('ck-is-dragging');
     };
     startDrag(e, {
-      onStart: () => !cal.readOnly && srcEl.classList.add('ck-is-dragging'),
+      onStart: () => allowed && srcEl.classList.add('ck-is-dragging'),
       onMove: (ev) => {
-        if (cal.readOnly) return;
+        if (!allowed) return;
         const day = this.hitDay(ev.clientX, ev.clientY);
         let { start, end } = inst;
         if (mode === 'move') {
@@ -151,8 +151,15 @@ export class MonthView {
 
   onGridDown(e) {
     const cal = this.cal;
-    if (e.button !== 0 || cal.readOnly || e.pointerType === 'touch' || e.target.closest('.ck-event, .ck-more, .ck-month-date')) return;
+    if (e.button !== 0 || e.target.closest('.ck-event, .ck-more, .ck-month-date')) return;
     const a = this.hitDay(e.clientX, e.clientY);
+    if (cal.readOnly || e.pointerType === 'touch') {
+      const up = (ev) => {
+        if (Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 4) cal.dateClick({ date: a, allDay: true }, ev);
+      };
+      window.addEventListener('pointerup', up, { once: true });
+      return;
+    }
     let sel = null;
     startDrag(e, {
       onMove: (ev) => {
@@ -162,7 +169,8 @@ export class MonthView {
       },
       onEnd: (ev, moved) => {
         this.highlight(null);
-        if (moved && sel) cal.openCreate({ start: sel.start, end: sel.end, allDay: true });
+        if (moved && sel) cal.select({ start: sel.start, end: sel.end, allDay: true }, ev, 'drag');
+        else if (!moved) cal.dateClick({ date: a, allDay: true }, ev);
       },
       onCancel: () => this.highlight(null),
     });
@@ -173,7 +181,7 @@ export class MonthView {
     if (cal.readOnly || e.target.closest('.ck-event, .ck-more, .ck-month-date')) return;
     const day = this.hitDay(e.clientX, e.clientY);
     const startMin = (cal.config.workingHours?.start ?? 9) * 60;
-    cal.openCreate({ start: atMinutes(day, startMin), end: atMinutes(day, startMin + cal.config.defaultEventDuration), allDay: false });
+    cal.select({ start: atMinutes(day, startMin), end: atMinutes(day, startMin + cal.config.defaultEventDuration), allDay: false }, e, 'dblclick');
   }
 
   destroy() {

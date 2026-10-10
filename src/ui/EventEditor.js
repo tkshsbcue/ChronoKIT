@@ -149,7 +149,7 @@ export class EventEditor {
   submit(e) {
     e.preventDefault();
     const { error, start, end, rrule } = this.values;
-    if (error || this.cal.readOnly) return;
+    if (error || this.cal.readOnly || this.cal.config.editorReadOnly) return;
     const f = this.form;
     this.onSave({
       title: f.title.trim(),
@@ -182,7 +182,11 @@ export class EventEditor {
 
   build() {
     const cal = this.cal;
-    const { locale, readOnly } = cal;
+    const { locale } = cal;
+    const readOnly = cal.readOnly || !!cal.config.editorReadOnly;
+    const show = { title: true, allDay: true, assignee: true, color: true, repeat: true, notes: true, delete: true, ...(cal.config.editorSections || {}) };
+    const labels = { delete: 'Delete', cancel: 'Cancel', save: 'Save changes', create: 'Create event', ...(cal.config.editorLabels || {}) };
+    const actions = cal.config.editorActions || [];
     const resources = cal.project.resources;
     const f = this.form;
     const { instance, isNew } = this.state;
@@ -202,8 +206,8 @@ export class EventEditor {
         h(
           'span',
           { class: 'ck-inline' },
-          input('startDate', { type: 'date', value: f.startDate, required: true, onChange: (e) => this.changeStartDate(e.target.value) }),
-          !f.allDay && input('startTime', { type: 'time', value: f.startTime, required: true, onInput: (e) => this.set({ startTime: e.target.value }) }),
+          input('startDate', { type: 'date', value: f.startDate, required: true, disabled: readOnly, onChange: (e) => this.changeStartDate(e.target.value) }),
+          !f.allDay && input('startTime', { type: 'time', value: f.startTime, required: true, disabled: readOnly, onInput: (e) => this.set({ startTime: e.target.value }) }),
         ),
       ),
       field(
@@ -211,11 +215,11 @@ export class EventEditor {
         h(
           'span',
           { class: 'ck-inline' },
-          input('endDate', { type: 'date', value: f.endDate, required: true, onInput: (e) => this.set({ endDate: e.target.value }) }),
-          !f.allDay && input('endTime', { type: 'time', value: f.endTime, required: true, onInput: (e) => this.set({ endTime: e.target.value }) }),
+          input('endDate', { type: 'date', value: f.endDate, required: true, disabled: readOnly, onInput: (e) => this.set({ endDate: e.target.value }) }),
+          !f.allDay && input('endTime', { type: 'time', value: f.endTime, required: true, disabled: readOnly, onInput: (e) => this.set({ endTime: e.target.value }) }),
         ),
       ),
-      h('label', { class: 'ck-check' }, input('allDay', { type: 'checkbox', checked: f.allDay, onChange: (e) => this.set({ allDay: e.target.checked }, true) }), 'All day'),
+      show.allDay && h('label', { class: 'ck-check' }, input('allDay', { type: 'checkbox', checked: f.allDay, disabled: readOnly, onChange: (e) => this.set({ allDay: e.target.checked }, true) }), 'All day'),
     );
 
     const swatches = h(
@@ -233,15 +237,16 @@ export class EventEditor {
       ),
     );
 
-    const who = h(
-      'div',
-      { class: 'ck-field-row' },
-      resources.length > 0 &&
-        field('Assigned to', select('resourceId', f.resourceId, [['', 'Unassigned'], ...resources.map((r) => [String(r.id), r.name])], (v) => this.set({ resourceId: v }))),
-      h('div', { class: 'ck-field' }, h('span', null, 'Color'), swatches),
-    );
+    const who = (show.assignee || show.color) &&
+      h(
+        'div',
+        { class: 'ck-field-row' },
+        show.assignee && resources.length > 0 &&
+          field(cal.config.assigneeLabel || 'Assigned to', select('resourceId', f.resourceId, [['', 'Unassigned'], ...resources.map((r) => [String(r.id), r.name])], (v) => this.set({ resourceId: v }))),
+        show.color && h('div', { class: 'ck-field' }, h('span', null, 'Color'), swatches),
+      );
 
-    const repeat = h(
+    const repeat = show.repeat && h(
       'fieldset',
       { class: 'ck-repeat' },
       field(
@@ -318,23 +323,24 @@ export class EventEditor {
             f.extra[fd.name] = e.target.value;
           };
           let control;
+          const locked = readOnly || !!fd.readOnly;
           if (fd.type === 'select') {
             control = h(
               'select',
-              { 'data-key': `x-${fd.name}`, value: String(value ?? ''), onChange: update },
+              { 'data-key': `x-${fd.name}`, value: String(value ?? ''), disabled: locked, onChange: update },
               h('option', { value: '' }, '—'),
               (fd.options || []).map((o) => h('option', { value: String(o?.value ?? o) }, String(o?.label ?? o))),
             );
           } else if (fd.type === 'textarea') {
-            control = h('textarea', { 'data-key': `x-${fd.name}`, rows: '2', value: value ?? '', onInput: update });
+            control = h('textarea', { 'data-key': `x-${fd.name}`, rows: '2', value: value ?? '', disabled: locked, onInput: update });
           } else {
-            control = input(`x-${fd.name}`, { type: fd.type || 'text', placeholder: fd.placeholder, value: value ?? '', onInput: update });
+            control = input(`x-${fd.name}`, { type: fd.type || 'text', placeholder: fd.placeholder, value: value ?? '', disabled: locked, onInput: update });
           }
           return field(fd.label, control, fd.type === 'textarea' ? ' ck-field-wide' : '');
         }),
       );
 
-    const notes = field(
+    const notes = show.notes && field(
       'Notes',
       h('textarea', { 'data-key': 'notes', rows: '3', placeholder: 'Agenda, links, call notes', value: f.notes, onInput: (e) => (f.notes = e.target.value) }),
       ' ck-field-wide',
@@ -361,7 +367,7 @@ export class EventEditor {
         'div',
         { class: 'ck-editor-head' },
         h('input', {
-          class: 'ck-editor-title', 'data-key': 'title', placeholder: 'Add a title', 'aria-label': 'Title', value: f.title, disabled: readOnly,
+          class: 'ck-editor-title', 'data-key': 'title', placeholder: 'Add a title', 'aria-label': 'Title', value: f.title, disabled: readOnly || !show.title,
           onInput: (e) => (f.title = e.target.value),
         }),
         h('button', { type: 'button', class: 'ck-icon-btn', 'aria-label': 'Close', onClick: () => this.onClose() }, icon(ICONS.close)),
@@ -379,10 +385,13 @@ export class EventEditor {
       h(
         'div',
         { class: 'ck-dialog-foot' },
-        !isNew && !readOnly && h('button', { type: 'button', class: 'ck-btn ck-btn-danger', onClick: () => this.onDelete(instance) }, isSeries ? 'Delete…' : 'Delete'),
+        !isNew && !readOnly && show.delete && h('button', { type: 'button', class: 'ck-btn ck-btn-danger', onClick: () => this.onDelete(instance) }, isSeries ? `${labels.delete}…` : labels.delete),
+        actions.map((a) =>
+          h('button', { type: 'button', class: 'ck-btn', 'data-key': `action-${a.key || a.label}`, onClick: () => a.onClick?.({ event: instance, editor: this, calendar: cal }) }, a.label),
+        ),
         h('span', { class: 'ck-spacer' }),
-        h('button', { type: 'button', class: 'ck-btn', onClick: () => this.onClose() }, 'Cancel'),
-        !readOnly && h('button', { type: 'submit', class: 'ck-btn ck-btn-primary' }, isNew ? 'Create event' : 'Save changes'),
+        h('button', { type: 'button', class: 'ck-btn', onClick: () => this.onClose() }, labels.cancel),
+        !readOnly && h('button', { type: 'submit', class: 'ck-btn ck-btn-primary' }, isNew ? labels.create : labels.save),
       ),
     );
   }

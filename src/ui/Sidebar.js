@@ -1,5 +1,6 @@
-import { addDays, addMonths, format, isSameDay, startOfDay, startOfMonth } from '../core/date.js';
+import { addDays, addMonths, startOfDay, startOfMonth } from '../core/date.js';
 import { h, icon, ICONS } from './dom.js';
+import { buildMiniMonth } from './MiniMonth.js';
 import { resolveColor } from './content.js';
 
 function miniMonth(cal) {
@@ -12,9 +13,6 @@ function miniMonth(cal) {
   }
   const shown = cal._miniCursor;
   const gridStart = addDays(shown, -((shown.getDay() - config.weekStartsOn + 7) % 7));
-  const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
-  const now = new Date();
-  const { start, end } = cal.range;
 
   // days with at least one event get a dot (cached per data version + month)
   const cacheKey = `${project.version}|${+gridStart}`;
@@ -27,38 +25,19 @@ function miniMonth(cal) {
     cal._busy = set;
   }
 
-  const move = (n) => {
-    cal._miniCursor = addMonths(shown, n);
-    cal.refresh();
-  };
-  return h(
-    'div',
-    { class: 'ck-mini' },
-    h(
-      'div',
-      { class: 'ck-mini-head' },
-      h('span', { class: 'ck-mini-title' }, format(shown, { month: 'long', year: 'numeric' }, locale)),
-      h('button', { type: 'button', class: 'ck-icon-btn', 'aria-label': 'Previous month', 'data-key': 'mini-prev', onClick: () => move(-1) }, icon(ICONS.prev, 14)),
-      h('button', { type: 'button', class: 'ck-icon-btn', 'aria-label': 'Next month', 'data-key': 'mini-next', onClick: () => move(1) }, icon(ICONS.next, 14)),
-    ),
-    h(
-      'div',
-      { class: 'ck-mini-grid' },
-      cells.slice(0, 7).map((d) => h('span', { class: 'ck-mini-dow', 'aria-hidden': 'true' }, format(d, { weekday: 'narrow' }, locale))),
-      cells.map((d) => {
-        const cls = ['ck-mini-day'];
-        if (d.getMonth() !== shown.getMonth()) cls.push('ck-other-month');
-        if (d >= start && d < end) cls.push('ck-in-range');
-        if (isSameDay(d, now)) cls.push('ck-today');
-        if (cal._busy.has(+d)) cls.push('ck-busy');
-        return h(
-          'button',
-          { type: 'button', class: cls.join(' '), 'aria-label': format(d, { dateStyle: 'full' }, locale), 'data-key': `mini-${+d}`, onClick: () => cal.setDate(d) },
-          d.getDate(),
-        );
-      }),
-    ),
-  );
+  return buildMiniMonth({
+    locale,
+    weekStartsOn: config.weekStartsOn,
+    cursor: shown,
+    range: cal.range,
+    nowDate: cal.now(),
+    busy: (d) => cal._busy.has(+d),
+    onSelect: (d) => cal.setDate(d),
+    onMove: (n) => {
+      cal._miniCursor = addMonths(shown, n);
+      cal.refresh();
+    },
+  });
 }
 
 function resourceFilter(cal) {
@@ -66,20 +45,28 @@ function resourceFilter(cal) {
   if (!resources.length) return null;
   const hidden = cal.hiddenResources;
   const allOn = hidden.size === 0;
+  const open = !cal.filterCollapsed;
+  const shown = resources.length - resources.filter((r) => hidden.has(r.id)).length;
   return h(
     'div',
-    { class: 'ck-filter' },
+    { class: `ck-filter${open ? '' : ' ck-collapsed'}` },
     h(
       'div',
       { class: 'ck-filter-head' },
-      h('span', null, cal.config.resourceLabel),
+      h(
+        'button',
+        { type: 'button', class: 'ck-filter-toggle', 'aria-expanded': String(open), 'data-key': 'filter-toggle', onClick: () => cal.toggleResourceFilter() },
+        icon(ICONS.down, 14),
+        h('span', null, cal.config.resourceLabel),
+        h('span', { class: 'ck-filter-count' }, shown === resources.length ? String(resources.length) : `${shown} of ${resources.length}`),
+      ),
       h(
         'button',
         { type: 'button', class: 'ck-link', 'data-key': 'filter-all', onClick: () => cal.setHiddenResources(allOn ? resources.map((r) => r.id) : []) },
         allOn ? 'Hide all' : 'Show all',
       ),
     ),
-    h(
+    open && h(
       'ul',
       { class: 'ck-filter-list' },
       resources.map((r) =>

@@ -158,13 +158,13 @@ Pass these to `new Calendar({...})`, or change them later with `calendar.setConf
 | `project` | empty | A `Project`, or plain `{ events, resources }` |
 | `crudManager` | | A `CrudManager`, or its options: `{ loadUrl, syncUrl, headers, fetchOptions, transport, autoLoad: true, autoSync: true, autoSyncDelay: 800 }` |
 | `listeners` | | `{ eventName: fn }`, see Events below |
-| `view` | `'week'` | `'day' \| 'week' \| 'month' \| 'timeline'` |
+| `view` | `'week'` | `'day' \| 'week' \| 'month' \| 'timeline' \| 'list'` |
 | `date` | today | Date or ISO string to show first |
-| `views` | all four | Which view buttons to show |
+| `views` | day, week, month, timeline | Which view buttons to show. Add `'list'` for the agenda view |
 | `height` | `720` | Number (px) or CSS length such as `'100%'` |
 | `readOnly` | `false` | |
-| `eventRenderer({ event, resource, view, timeText })` | | Return an HTML string or a DOM node to replace an event's content, or `null` for the default. Escape user text with `escapeHtml()` |
-| `editorFields` | `[]` | Extra editor fields: `{ name, label, type?, options?, placeholder?, defaultValue? }`. Values are saved on the event under `name` |
+| `eventRenderer({ event, resource, view, timeText, compact })` | | Return an HTML string or a DOM node to replace an event's content, or `null` for the default. `compact` is true when the block is short (draw one line). Escape user text with `escapeHtml()` |
+| `editorFields` | `[]` | Extra editor fields: `{ name, label, type?, options?, placeholder?, defaultValue?, readOnly? }`. Values are saved on the event under `name` |
 | `weekStartsOn` | `1` | 0 = Sunday |
 | `workingHours` / `workingDays` | `{ start: 9, end: 18 }` / Mon–Fri | Time outside these is shaded |
 | `dayStartHour` / `dayEndHour` / `scrollToHour` | `0` / `24` / `8` | Day and week views |
@@ -177,6 +177,21 @@ Pass these to `new Calendar({...})`, or change them later with `calendar.setConf
 | `locale` | browser | Any `Intl` locale, e.g. `'en-IN'`, `'de-DE'` |
 | `toolbarItems` / `sidebarItems` | | A DOM node (or a function returning one) added to the toolbar or sidebar |
 | `cls` | | Extra CSS class on the root element |
+| `editor` | `true` | `false` never opens the built-in editor: handle `eventClick` and `select` yourself |
+| `eventSource({ start, end, view, signal })` | | Async function returning the events (or `{ events, resources }`) for the visible range. Called on mount, on every range or view change, and by `refetch()`. `signal` aborts when a newer range supersedes this one (pass it to `fetch`). Return `null` to keep what is shown. Undo history is kept across loads |
+| `showToolbar` | `true` | `false` hides the built-in toolbar so your app can drive the calendar with its methods |
+| `tooltip` | `true` | `false` turns hover cards off; a function `({ event }) => html \| Node` replaces their content |
+| `nowIndicator` | `true` | The red now line in day, week and timeline views |
+| `now` | | Function returning the current time, e.g. a clinic's wall clock. Drives the now line, today highlight and `today()` |
+| `editorSections` | all on | Hide parts of the editor: `{ title, allDay, assignee, color, repeat, notes, delete }` set to `false` |
+| `editorLabels` | | Rename its buttons: `{ delete, cancel, save, create }` |
+| `editorActions` | | Extra footer buttons: `[{ key, label, onClick({ event, editor, calendar }) }]` |
+| `editorReadOnly` | `false` | Open the editor to look, not to change (per call: set it with `setConfig` before `openEditor`) |
+| `assigneeLabel` | `'Assigned to'` | The editor's assignee label, e.g. `'Clinician'` |
+| `scale` | `1` | Multiplies text and every laid-out size. `'auto'` follows the calendar's width (1 up to 1200px wide, growing to 1.5 on very wide screens). MiniMonth takes a number |
+| `resourceFilterCollapsed` | `false` | Start with the sidebar's people list folded; its heading opens and closes it (`calendar.toggleResourceFilter()`) |
+| `viewLabels` | | Rename the view buttons, e.g. `{ timeline: 'Clinicians', list: 'Agenda' }` |
+| `listRange` / `listShowEmpty` / `listEmptyText` | `'week'` / `false` / `'Nothing scheduled'` | List view: one `'day'`, `'week'` or `'month'`, whether to show empty days, and the empty text |
 
 ## Methods
 
@@ -188,7 +203,13 @@ calendar.setConfig({ theme: 'dark', readOnly: true });
 calendar.setResourceVisible('r1', false);
 calendar.openEditor(eventId);         // or an event instance
 calendar.openCreate({ start, end, resourceId });
+calendar.closeEditor();
 calendar.renderNow();                 // re-render immediately (normally automatic)
+calendar.refetch();                   // load the visible range again from eventSource
+calendar.rangeFor(date, view);        // { start, end } a view shows for a date
+calendar.adjacentRanges();            // [previous, next] ranges, e.g. to fetch ahead
+calendar.undo(); calendar.redo();     // through beforeEventChange (source 'undo' / 'redo')
+calendar.select({ start, end, resourceId }); // as if the user picked that time
 calendar.destroy();                   // remove from the page, stop timers and listeners
 
 calendar.view; calendar.date; calendar.project; calendar.crudManager;
@@ -207,7 +228,13 @@ Add listeners with `calendar.on(name, fn)` (it returns an unsubscribe function) 
 | `dateChange` | `{ date }` | |
 | `selectionChange` | `{ instanceId }` | |
 | `editorOpen` | `{ editor, instance?, draft?, isNew }` | |
+| `select` | `{ start, end, allDay, resourceId, source, domEvent }` | Empty time picked by dragging across it (`source: 'drag'`) or double-clicking (`'dblclick'`). Return `false` to stop the editor, e.g. to open your own booking form |
+| `dateClick` | `{ date, allDay, resourceId, domEvent }` | A single click on empty space (also fires when `readOnly` and on touch) |
+| `rangeChange` | `{ start, end, view }` | The visible range changed (also fired once on mount) |
+| `load` / `loadError` / `loading` | `{ start, end }` / `{ error }` / `{ loading }` | `eventSource` progress |
 | `destroy` | | |
+
+Undo and redo also go through `beforeEventChange`, with `source: 'undo'` or `'redo'` (edits from the views have `source: 'ui'`). Returning `false` drops that step from the history instead of applying it.
 
 ### Example: block double-booking
 
@@ -264,6 +291,11 @@ new Calendar({
 | `rrule` | string \| null | e.g. `FREQ=WEEKLY;BYDAY=MO,WE;COUNT=10` |
 | `exceptionDates` | string[] | `YYYY-MM-DD` dates skipped in the series |
 | `recurringEventId`, `originalDateKey` | | Set on an occurrence that was edited on its own |
+| `editable` | boolean | `false` locks the event (it can still be clicked). Default `true` |
+| `startEditable` / `durationEditable` / `resourceEditable` | boolean | Finer control: drag to another time / resize / drag to another person. Each falls back to `editable` |
+| `display` | `'background'` | Drawn as a shaded block behind the other events (e.g. a clinic session or a shift). A click inside it opens it (`eventClick`); dragging across it still picks time (`select`), and its label strip drags it |
+| `resourceIds` | id[] | Background events: the timeline rows to shade. Without it (and without `resourceId`) every row is shaded |
+| `classNames` | string \| string[] | Extra classes on the event element |
 | anything else | | Kept as-is and sent to the server (e.g. `customer`, `dealId`) |
 
 **Resource**: `id`, `name`, optional `role`, `color`, `avatar` (image URL), plus any custom fields.
@@ -291,6 +323,30 @@ project.undo(); project.redo(); project.canUndo; project.undoLabel;
 project.hasChanges; project.getChanges();         // what the next sync will send
 project.on('change', (info) => {});
 ```
+
+## MiniMonth
+
+A small month picker, the same one as in the sidebar, usable on its own:
+
+```js
+import { MiniMonth } from '@mysticsoulwander/chronokit';
+
+const picker = new MiniMonth({
+  appendTo: '#picker',
+  selected: '2026-10-12',
+  months: 2,                                        // two months side by side
+  marks: (day) => [{ color: 'teal' }],              // up to four dots under the date
+  dayStyle: (day) => ({ background: '#dff3e4', color: '#14532d', ring: '#16a34a' }),
+  dayTitle: (day) => '80% of slots free',           // hover text
+  disabled: (day) => day < new Date(),
+  onSelect: (day) => console.log(day),
+  onMonthChange: (firstDay) => loadAvailability(firstDay),
+});
+picker.setOptions({ selected: new Date() });        // any option, any time
+picker.destroy();
+```
+
+`layout: 'strip'` shows `stripDays` days (default 7, on whole weeks) in one row with previous / next, for a date strip above a slot list. Other options: `weekStartsOn`, `locale`, `range: { start, end }` (shaded), `now`, `theme`, `cls`.
 
 ## Theming
 
@@ -345,6 +401,7 @@ These are the natural next steps, roughly in order of value for a CRM:
 - Resource utilization / histogram views, travel time
 - Real-time multi-user updates (push server changes in with `project.applySyncResponse`)
 - Horizontal virtualization for very long timeline ranges
+- Resource columns in the day and week views (people side by side); the timeline covers this today
 - Translatable UI strings (dates already follow `locale`; button labels are English)
 - Touch: drag-to-create is mouse-only; on touch you can move, resize and tap
 - A full accessibility pass (moving events with the keyboard, screen-reader announcements)
