@@ -10,7 +10,7 @@
 import { Emitter } from '../core/emitter.js';
 import { Project } from '../core/project.js';
 import { CrudManager } from '../core/crud.js';
-import { addDays, addMonths, clamp, format, startOfDay, startOfWeek } from '../core/date.js';
+import { addDays, addMonths, clamp, format, startOfDay, startOfWeek, toDate } from '../core/date.js';
 import { h, keepFocus, raf, cancelRaf } from './dom.js';
 import { buildToolbar } from './Toolbar.js';
 import { buildSidebar } from './Sidebar.js';
@@ -93,7 +93,8 @@ export class Calendar extends Emitter {
     for (const [name, fn] of Object.entries(listeners || {})) this.on(name, fn);
 
     this._view = VIEW_TYPES.includes(this.config.view) ? this.config.view : 'week';
-    this._date = startOfDay(date ? new Date(date) : new Date());
+    // toDate() reads 'YYYY-MM-DD' as local midnight (new Date() would read it as UTC)
+    this._date = startOfDay((date && toDate(date)) || new Date());
     this.hiddenResources = new Set();
     this.sidebarOpen = true;
     this.zoom = this.config.timelineHourWidth;
@@ -197,7 +198,9 @@ export class Calendar extends Emitter {
   }
 
   setDate(date) {
-    const d = startOfDay(new Date(date));
+    const parsed = toDate(date);
+    if (!parsed) return this;
+    const d = startOfDay(parsed);
     if (+d === +this._date) return this;
     this._date = d;
     this.emit('dateChange', { date: d, calendar: this });

@@ -3,9 +3,10 @@ import {
   Project, CrudManager, createMemoryTransport, parseRRule, stringifyRRule, describeRRule, expandRecurring,
   layoutTimeGridColumn, layoutDayRow, layoutLanes, findRowIndex, isPhantomId,
 } from '../src/core/index.js';
-import { dateKey, addDays } from '../src/core/date.js';
+import { dateKey, addDays, toDate } from '../src/core/date.js';
 
-const d = (s) => new Date(s); // local time when no offset given
+// local time: 'YYYY-MM-DD' is local midnight, 'YYYY-MM-DDTHH:mm' is local wall-clock time
+const d = (s) => toDate(s);
 
 describe('recurrence', () => {
   it('round-trips RRULE strings', () => {
@@ -25,7 +26,7 @@ describe('recurrence', () => {
   it('skips exception dates and respects UNTIL', () => {
     const ev = {
       start: d('2026-10-01T09:00'), end: d('2026-10-01T09:30'),
-      rrule: 'FREQ=DAILY;UNTIL=20261005T235959Z', exceptionDates: ['2026-10-03'],
+      rrule: 'FREQ=DAILY;UNTIL=20261005T235959' /* local time; a Z (UTC) value lands on another day east of UTC */, exceptionDates: ['2026-10-03'],
     };
     const keys = expandRecurring(ev, d('2026-09-01'), d('2026-12-01')).map((o) => o.key);
     expect(keys).toEqual(['2026-10-01', '2026-10-02', '2026-10-04', '2026-10-05']);

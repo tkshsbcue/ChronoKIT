@@ -2696,7 +2696,7 @@ var wt = class extends n {
 			}), this._ownsCrud = !0, e && this.crudManager.load().catch(() => {});
 		} else this.crudManager = null;
 		for (let [e, t] of Object.entries(i || {})) this.on(e, t);
-		if (this._view = bt.includes(this.config.view) ? this.config.view : "week", this._date = d(a ? new Date(a) : /* @__PURE__ */ new Date()), this.hiddenResources = /* @__PURE__ */ new Set(), this.sidebarOpen = !0, this.zoom = this.config.timelineHourWidth, this.selectedId = null, this._views = {}, this._editor = null, this._modal = 0, this._tipTimer = 0, this._rafId = 0, this._cacheKey = null, this.toolbarEl = H("div", { class: "ck-toolbar" }), this.sidebarEl = H("aside", { class: "ck-sidebar" }), this.viewEl = H("div", { class: "ck-view" }), this.tooltipEl = H("div", {
+		if (this._view = bt.includes(this.config.view) ? this.config.view : "week", this._date = d(a && c(a) || /* @__PURE__ */ new Date()), this.hiddenResources = /* @__PURE__ */ new Set(), this.sidebarOpen = !0, this.zoom = this.config.timelineHourWidth, this.selectedId = null, this._views = {}, this._editor = null, this._modal = 0, this._tipTimer = 0, this._rafId = 0, this._cacheKey = null, this.toolbarEl = H("div", { class: "ck-toolbar" }), this.sidebarEl = H("aside", { class: "ck-sidebar" }), this.viewEl = H("div", { class: "ck-view" }), this.tooltipEl = H("div", {
 			class: "ck-tooltip",
 			role: "tooltip",
 			hidden: !0
@@ -2743,9 +2743,11 @@ var wt = class extends n {
 		}), this.renderNow());
 	}
 	setDate(e) {
-		let t = d(new Date(e));
-		return +t == +this._date ? this : (this._date = t, this.emit("dateChange", {
-			date: t,
+		let t = c(e);
+		if (!t) return this;
+		let n = d(t);
+		return +n == +this._date ? this : (this._date = n, this.emit("dateChange", {
+			date: n,
 			calendar: this
 		}), this.renderNow());
 	}
