@@ -76,7 +76,24 @@ new Calendar({
 | `import { Calendar } from './chronokit/dist/chronokit.js'` | You want one file instead of a folder |
 | `<script src="chronokit/dist/chronokit.umd.js">` then `window.ChronoKit.Calendar` | Older pages without modules. Works even from `file://`. See `examples/script-tag.html` |
 
-As an npm dependency, install it from the folder (`npm install ../chronokit`), then use `import { Calendar } from 'chronokit'` and `import 'chronokit/style.css'`. The CSS file is always loaded separately, so the JavaScript runs without a bundler.
+### From npm
+
+```bash
+npm install @tkshsbcue/chronokit
+```
+
+```js
+import { Calendar } from '@tkshsbcue/chronokit';
+import '@tkshsbcue/chronokit/style.css';
+```
+
+The CSS file is always loaded separately, so the JavaScript runs without a bundler. Pages without a build step can load it from a CDN:
+
+```html
+<link rel="stylesheet" href="https://unpkg.com/@tkshsbcue/chronokit/dist/chronokit.css" />
+<script src="https://unpkg.com/@tkshsbcue/chronokit/dist/chronokit.umd.js"></script>
+<!-- then: new ChronoKit.Calendar({ appendTo: '#schedule', ... }) -->
+```
 
 ### Using it inside a framework
 
@@ -85,7 +102,7 @@ The calendar is a normal class, so wrapping it takes a few lines: create it when
 ```jsx
 // React
 import { useEffect, useRef } from 'react';
-import { Calendar } from 'chronokit';
+import { Calendar } from '@tkshsbcue/chronokit';
 
 export function Schedule({ project }) {
   const ref = useRef(null);
@@ -100,7 +117,7 @@ export function Schedule({ project }) {
 ```js
 // Vue 3
 import { onMounted, onBeforeUnmount, ref, h } from 'vue';
-import { Calendar } from 'chronokit';
+import { Calendar } from '@tkshsbcue/chronokit';
 
 export default {
   props: ['project'],
@@ -306,6 +323,14 @@ npm start            # demo at http://localhost:8080/demo/ (zero-dependency serv
 npm test             # 32 unit + DOM tests
 npm run build        # dist/chronokit.js, dist/chronokit.umd.js, dist/chronokit.css
 npm run build:demo   # demo-dist/index.html, one self-contained file
+```
+
+### Publishing a new version
+
+```bash
+npm version patch    # or minor / major; also commits and tags
+npm publish          # runs the tests and rebuilds dist/ first
+git push --follow-tags
 ```
 
 Browsers only load ES modules over `http://`, not by double-clicking an HTML file, so open the demo through `npm start` or any static server (your CRM's own server works too). The `<script>`-tag build has no such limit.
