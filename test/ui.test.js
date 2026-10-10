@@ -119,7 +119,8 @@ describe('Calendar (plain JS)', () => {
 
   it('navigates and emits events', () => {
     const changes = [];
-    mount({ project: makeProject(), view: 'week', date: '2026-10-07', listeners: { dateChange: ({ date }) => changes.push(date.getDate()) } });
+    // pin the locale so the title format doesn't depend on the machine's language settings
+    mount({ project: makeProject(), view: 'week', date: '2026-10-07', locale: 'en-US', listeners: { dateChange: ({ date }) => changes.push(date.getDate()) } });
     expect(calendar.title).toMatch(/Oct 5/);
     calendar.next();
     expect(changes).toEqual([14]);
