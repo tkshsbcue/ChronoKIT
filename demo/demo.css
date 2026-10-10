@@ -1,0 +1,305 @@
+/* Host-page styles for the demo CRM shell. The calendar itself only uses src/styles.css. */
+
+/* CRM shell: dark nav bar over a cool grey workspace; the calendar carries the colour. */
+:root {
+  --demo-bg: #eef0f3;
+  --demo-panel: #ffffff;
+  --demo-ink: #1b2230;
+  --demo-muted: #667085;
+  --demo-line: #dfe3e9;
+  --demo-brand: #2b59c3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --demo-bg: #0e1116;
+    --demo-panel: #171b23;
+    --demo-ink: #e5e8ee;
+    --demo-muted: #9aa3b5;
+    --demo-line: #2b313d;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --demo-bg: #0e1116;
+  --demo-panel: #171b23;
+  --demo-ink: #e5e8ee;
+  --demo-muted: #9aa3b5;
+  --demo-line: #2b313d;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--demo-bg);
+  color: var(--demo-ink);
+}
+
+.demo-app.demo-light {
+  --demo-bg: #eef0f3;
+  --demo-panel: #ffffff;
+  --demo-ink: #1b2230;
+  --demo-muted: #667085;
+  --demo-line: #dfe3e9;
+  background: var(--demo-bg);
+  color: var(--demo-ink);
+  color-scheme: light;
+}
+
+.demo-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.demo-app.demo-dark {
+  --demo-bg: #0e1116;
+  --demo-panel: #171b23;
+  --demo-ink: #e5e8ee;
+  --demo-muted: #9aa3b5;
+  --demo-line: #2b313d;
+  background: var(--demo-bg);
+  color: var(--demo-ink);
+  color-scheme: dark;
+}
+
+.demo-top {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 20px;
+  height: 52px;
+  flex-shrink: 0;
+  background: #1b2230;
+  color: #e9ecf2;
+}
+
+.demo-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.demo-logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #5b82e6 50%, #2b59c3 50%);
+}
+
+.demo-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.demo-nav a {
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: #aab3c5;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.demo-nav a:hover {
+  color: #fff;
+}
+
+.demo-nav a[aria-current='page'] {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.demo-note {
+  margin-left: auto;
+  font-size: 12px;
+  color: #8f99ad;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.demo-main {
+  flex: 1;
+  min-height: 0;
+  padding: 16px 16px 0;
+}
+
+.demo-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--ck-canvas);
+  font-size: 12px;
+}
+
+.demo-settings-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.demo-settings label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.demo-settings input {
+  accent-color: var(--ck-accent);
+}
+
+.demo-btn {
+  margin-top: 4px;
+  height: 30px;
+  border: 1px solid var(--ck-line);
+  border-radius: 6px;
+  background: var(--ck-bg);
+  color: var(--ck-ink);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.demo-btn:hover {
+  border-color: var(--ck-accent);
+}
+
+.demo-log {
+  flex-shrink: 0;
+  margin: 12px 16px 16px;
+  border: 1px solid var(--demo-line);
+  border-radius: 10px;
+  background: var(--demo-panel);
+}
+
+.demo-log-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.demo-log-head > span:first-child {
+  font-weight: 600;
+}
+
+.demo-log-count,
+.demo-log-hint,
+.demo-muted {
+  color: var(--demo-muted);
+  font-size: 12px;
+}
+
+.demo-log-hint {
+  margin-left: auto;
+}
+
+.demo-log-body {
+  max-height: 34vh;
+  overflow: auto;
+  padding: 0 14px 12px;
+  font-size: 12px;
+}
+
+.demo-log-body details {
+  border-top: 1px solid var(--demo-line);
+  padding: 8px 0;
+}
+
+.demo-log-body summary {
+  cursor: pointer;
+}
+
+.demo-log-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.demo-log-body pre {
+  margin: 4px 0 0;
+  padding: 8px;
+  max-height: 260px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--demo-bg);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.demo-bad {
+  color: #c2364f;
+  font-weight: 600;
+}
+
+.demo-linkbtn {
+  border: 0;
+  background: none;
+  color: var(--demo-brand);
+  font: inherit;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.demo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 100;
+  max-width: min(560px, calc(100% - 32px));
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #1b2230;
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+}
+
+@media (max-width: 720px) {
+  .demo-note,
+  .demo-nav {
+    display: none;
+  }
+
+  .demo-main {
+    padding: 8px 8px 0;
+  }
+
+  .demo-log {
+    margin: 8px;
+  }
+
+  .demo-log-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}

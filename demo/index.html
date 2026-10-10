@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChronoKit Demo</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="../src/styles.css" />
+    <link rel="stylesheet" href="./demo.css" />
+  </head>
+  <body>
+    <div class="demo-app demo-light">
+      <header class="demo-top">
+        <span class="demo-brand"><span class="demo-logo" aria-hidden="true"></span>Northwind CRM</span>
+        <nav class="demo-nav" aria-label="CRM sections">
+          <a href="#deals">Deals</a>
+          <a href="#contacts">Contacts</a>
+          <a href="#schedule" aria-current="page">Schedule</a>
+          <a href="#reports">Reports</a>
+        </nav>
+        <span class="demo-note">Drag events to move them, drag across empty time to create one, Ctrl+Z to undo</span>
+      </header>
+      <main class="demo-main" id="schedule"></main>
+      <section class="demo-log" id="log"></section>
+    </div>
+    <div class="demo-toast" id="toast" role="status" hidden></div>
+    <!-- No build step: the browser loads the ES modules directly. -->
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

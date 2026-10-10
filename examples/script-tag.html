@@ -1,0 +1,51 @@
+<!doctype html>
+<!--
+  ChronoKit with a plain <script> tag: no modules, no build, works even from file://.
+  Run `npm run build` first to create dist/chronokit.umd.js and dist/chronokit.css.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChronoKit Script Tag</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../dist/chronokit.css" />
+    <style>
+      body { margin: 0; padding: 16px; font-family: system-ui, sans-serif; background: #eef0f3; }
+    </style>
+  </head>
+  <body>
+    <div id="schedule"></div>
+
+    <script src="../dist/chronokit.umd.js"></script>
+    <script>
+      const { Calendar } = window.ChronoKit;
+      const day = (offset, h, m = 0) => {
+        const d = new Date();
+        d.setDate(d.getDate() + offset);
+        d.setHours(h, m, 0, 0);
+        return d;
+      };
+
+      const calendar = new Calendar({
+        appendTo: document.getElementById('schedule'),
+        view: 'week',
+        height: 640,
+        project: {
+          resources: [
+            { id: 1, name: 'Maya Fernandes', color: 'cobalt' },
+            { id: 2, name: 'Jonah Weiss', color: 'teal' },
+          ],
+          events: [
+            { id: 1, title: 'Discovery call: Globex', start: day(0, 10), end: day(0, 10, 30), resourceId: 1 },
+            { id: 2, title: 'Product demo: Initech', start: day(1, 14), end: day(1, 15), resourceId: 2 },
+            { id: 3, title: 'Pipeline review', start: day(-1, 9), end: day(-1, 9, 30), resourceId: 1, rrule: 'FREQ=WEEKLY;BYDAY=MO,TH' },
+          ],
+        },
+        listeners: {
+          eventChange: ({ type, changes }) => console.log('changed', type, changes),
+        },
+      });
+    </script>
+  </body>
+</html>

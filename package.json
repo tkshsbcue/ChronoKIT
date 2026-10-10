@@ -1,0 +1,52 @@
+{
+  "name": "chronokit",
+  "version": "0.1.0",
+  "description": "Calendar + resource scheduler in plain JavaScript (ES modules, no framework). Day/week/month/timeline views, drag & drop, recurring events, undo/redo and backend sync.",
+  "main": "./dist/chronokit.umd.js",
+  "scripts": {
+    "start": "node scripts/serve.js",
+    "dev": "vite --open /demo/",
+    "build": "vite build && node -e \"require('fs').copyFileSync('src/styles.css','dist/chronokit.css')\"",
+    "build:demo": "vite build --config demo/vite.config.js",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "calendar",
+    "scheduler",
+    "vanilla-js",
+    "es-modules",
+    "resource-scheduling",
+    "timeline",
+    "recurring-events",
+    "crm"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "vite": "^8.3.4",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^5.0.3"
+  },
+  "type": "module",
+  "module": "./dist/chronokit.js",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "require": "./dist/chronokit.umd.js"
+    },
+    "./core": "./src/core/index.js",
+    "./style.css": "./src/styles.css",
+    "./dist/*": "./dist/*",
+    "./src/*": "./src/*"
+  },
+  "files": [
+    "src",
+    "dist",
+    "README.md",
+    "SYNC_PROTOCOL.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "browser": "./dist/chronokit.umd.js"
+}
