@@ -79,19 +79,19 @@ new Calendar({
 ### From npm
 
 ```bash
-npm install @tkshsbcue/chronokit
+npm install @mysticsoulwander/chronokit
 ```
 
 ```js
-import { Calendar } from '@tkshsbcue/chronokit';
-import '@tkshsbcue/chronokit/style.css';
+import { Calendar } from '@mysticsoulwander/chronokit';
+import '@mysticsoulwander/chronokit/style.css';
 ```
 
 The CSS file is always loaded separately, so the JavaScript runs without a bundler. Pages without a build step can load it from a CDN:
 
 ```html
-<link rel="stylesheet" href="https://unpkg.com/@tkshsbcue/chronokit/dist/chronokit.css" />
-<script src="https://unpkg.com/@tkshsbcue/chronokit/dist/chronokit.umd.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/@mysticsoulwander/chronokit/dist/chronokit.css" />
+<script src="https://unpkg.com/@mysticsoulwander/chronokit/dist/chronokit.umd.js"></script>
 <!-- then: new ChronoKit.Calendar({ appendTo: '#schedule', ... }) -->
 ```
 
@@ -102,7 +102,7 @@ The calendar is a normal class, so wrapping it takes a few lines: create it when
 ```jsx
 // React
 import { useEffect, useRef } from 'react';
-import { Calendar } from '@tkshsbcue/chronokit';
+import { Calendar } from '@mysticsoulwander/chronokit';
 
 export function Schedule({ project }) {
   const ref = useRef(null);
@@ -117,7 +117,7 @@ export function Schedule({ project }) {
 ```js
 // Vue 3
 import { onMounted, onBeforeUnmount, ref, h } from 'vue';
-import { Calendar } from '@tkshsbcue/chronokit';
+import { Calendar } from '@mysticsoulwander/chronokit';
 
 export default {
   props: ['project'],
