@@ -1867,3 +1867,69 @@ body.ck-body-dragging * {
   color: var(--ck-muted);
   font-size: calc(12px * var(--ck-scale, 1));
 }
+
+/* 0.2.1: the people list's search, group filter and order */
+.ck-filter-tools {
+  display: grid;
+  gap: calc(6px * var(--ck-scale, 1));
+  padding: 0 calc(4px * var(--ck-scale, 1)) calc(8px * var(--ck-scale, 1));
+}
+
+.ck-filter-search,
+.ck-filter-select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: calc(32px * var(--ck-scale, 1));
+  padding: 0 calc(8px * var(--ck-scale, 1));
+  border: 1px solid var(--ck-line);
+  border-radius: calc(6px * var(--ck-scale, 1));
+  background: var(--ck-bg);
+  color: inherit;
+  font: inherit;
+  font-size: calc(13px * var(--ck-scale, 1));
+}
+
+.ck-filter-search:focus,
+.ck-filter-select:focus {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: -1px;
+}
+
+.ck-filter-selects {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(6px * var(--ck-scale, 1));
+}
+
+/* a long list scrolls inside the sidebar instead of stretching it */
+.ck-filter-tools + .ck-filter-list {
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.ck-filter-heading {
+  padding: calc(8px * var(--ck-scale, 1)) calc(4px * var(--ck-scale, 1)) calc(2px * var(--ck-scale, 1));
+  font-size: calc(11px * var(--ck-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ck-muted);
+}
+
+.ck-filter-group {
+  margin-left: auto;
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(11px * var(--ck-scale, 1));
+  color: var(--ck-muted);
+}
+
+.ck-filter-empty {
+  padding: calc(8px * var(--ck-scale, 1)) calc(4px * var(--ck-scale, 1));
+  color: var(--ck-muted);
+  font-size: calc(13px * var(--ck-scale, 1));
+}

@@ -334,6 +334,72 @@ describe('people list in the sidebar', () => {
   });
 });
 
+describe('people list: search, group and order (0.2.1)', () => {
+  const people = [
+    { id: 1, name: 'Zara Khan', role: 'Surgeon' },
+    { id: 2, name: 'Amir Patel', role: 'Nurse' },
+    { id: 3, name: 'Beth Lee', role: 'Surgeon' },
+    { id: 4, name: 'Cara Diaz', role: 'Coordinator' },
+    { id: 5, name: 'Dan Wu', role: 'Nurse' },
+    { id: 6, name: 'Eve Roy' },
+    { id: 7, name: 'Finn Ash', role: 'Nurse' },
+    { id: 8, name: 'Gail Ott', role: 'Surgeon' },
+    { id: 9, name: 'Hugo Ma', role: 'Coordinator' },
+  ];
+  const names = (el) => [...el.querySelectorAll('.ck-filter-name')].map((n) => n.textContent);
+  const opts = { project: { resources: people }, resourceGroupBy: 'role', resourceGroupLabel: 'Role' };
+
+  it('shows a search box over 8 people and narrows the list by name or role, not the calendar', () => {
+    const el = mount(opts);
+    const search = el.querySelector('[data-key="filter-search"]');
+    expect(search).not.toBeNull();
+    search.focus();
+    search.value = 'nur';
+    search.dispatchEvent(new Event('input'));
+    expect(names(el)).toEqual(['Amir Patel', 'Dan Wu', 'Finn Ash']);
+    expect(calendar.hiddenResources.size).toBe(0);
+    expect(document.activeElement?.dataset.key).toBe('filter-search');
+    calendar.setResourceQuery('nobody');
+    expect(el.querySelector('.ck-filter-empty').textContent).toBe('No people match');
+  });
+
+  it('no search box for a short list unless asked', () => {
+    const el = mount({ project: { resources: people.slice(0, 3) } });
+    expect(el.querySelector('[data-key="filter-search"]')).toBeNull();
+    calendar.setConfig({ resourceSearch: true });
+    expect(el.querySelector('[data-key="filter-search"]')).not.toBeNull();
+  });
+
+  it('filters by role, with counts, and "Show only these" keeps just that role on the calendar', () => {
+    const el = mount(opts);
+    const select = el.querySelector('[data-key="filter-group"]');
+    expect([...select.options].map((o) => o.textContent)).toEqual(['Every role', 'Coordinator (2)', 'Nurse (3)', 'Surgeon (3)']);
+    calendar.setResourceGroup('Surgeon');
+    expect(names(el)).toEqual(['Beth Lee', 'Gail Ott', 'Zara Khan']);
+    el.querySelector('[data-key="filter-only"]').click();
+    expect([...calendar.hiddenResources].sort()).toEqual([2, 4, 5, 6, 7, 9]);
+    calendar.setResourceGroup('');
+    expect(el.querySelector('[data-key="filter-all"]').textContent).toBe('Show all');
+  });
+
+  it('sorts Z–A, and by role with headings (people without one last)', () => {
+    const el = mount(opts);
+    calendar.setResourceSort('name-desc');
+    expect(names(el)[0]).toBe('Zara Khan');
+    calendar.setResourceSort('group');
+    const headings = [...el.querySelectorAll('.ck-filter-heading')].map((n) => n.textContent);
+    expect(headings).toEqual(['Coordinator', 'Nurse', 'Surgeon', 'No role']);
+    expect(names(el).slice(0, 2)).toEqual(['Cara Diaz', 'Hugo Ma']);
+    expect(names(el).at(-1)).toBe('Eve Roy');
+  });
+
+  it('without resourceGroupBy there is no role filter or sort', () => {
+    const el = mount({ project: { resources: people } });
+    expect(el.querySelector('[data-key="filter-group"]')).toBeNull();
+    expect(el.querySelector('[data-key="filter-search"]')).not.toBeNull();
+  });
+});
+
 describe('scale', () => {
   it('multiplies hour height and sets --ck-scale', () => {
     const el = mount({ view: 'day', hourHeight: 48, scale: 1.5 });

@@ -1,6 +1,6 @@
 {
   "name": "@mysticsoulwander/chronokit",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Calendar + resource scheduler in plain JavaScript (ES modules, no framework). Day/week/month/timeline views, drag & drop, recurring events, undo/redo and backend sync.",
   "keywords": [
     "calendar",

@@ -230,8 +230,8 @@ function P(e) {
 	let n = [`FREQ=${t.freq}`];
 	return t.interval > 1 && n.push(`INTERVAL=${t.interval}`), t.byDay && n.push(`BYDAY=${t.byDay.join(",")}`), t.byMonthDay && n.push(`BYMONTHDAY=${t.byMonthDay.join(",")}`), t.count ? n.push(`COUNT=${t.count}`) : t.until && n.push(`UNTIL=${le(t.until)}`), n.join(";");
 }
-var ue = (e, t) => new Date(e.getFullYear(), e.getMonth(), e.getDate(), t.getHours(), t.getMinutes(), t.getSeconds(), t.getMilliseconds());
-function de(e, t, n, r) {
+var F = (e, t) => new Date(e.getFullYear(), e.getMonth(), e.getDate(), t.getHours(), t.getMinutes(), t.getSeconds(), t.getMilliseconds());
+function ue(e, t, n, r) {
 	if (r > 0) {
 		let i = 1 + (n - new Date(e, t, 1).getDay() + 7) % 7 + (r - 1) * 7;
 		return i <= m(e, t) ? new Date(e, t, i) : null;
@@ -239,7 +239,7 @@ function de(e, t, n, r) {
 	let i = m(e, t), a = i - (new Date(e, t, i).getDay() - n + 7) % 7 + (r + 1) * 7;
 	return a >= 1 ? new Date(e, t, a) : null;
 }
-function fe(e, t, n) {
+function de(e, t, n) {
 	switch (t.freq) {
 		case "DAILY": {
 			let r = p(d(e), n * t.interval);
@@ -248,14 +248,14 @@ function fe(e, t, n) {
 				dates: []
 			} : {
 				periodStart: r,
-				dates: [ue(r, e)]
+				dates: [F(r, e)]
 			};
 		}
 		case "WEEKLY": {
 			let r = p(g(e, 1), n * 7 * t.interval), i = t.byDay ? t.byDay.map((e) => M(e).code) : [O[e.getDay()]];
 			return {
 				periodStart: r,
-				dates: [...new Set(i)].map((e) => oe.indexOf(e)).sort((e, t) => e - t).map((t) => ue(p(r, t), e))
+				dates: [...new Set(i)].map((e) => oe.indexOf(e)).sort((e, t) => e - t).map((t) => F(p(r, t), e))
 			};
 		}
 		case "MONTHLY": {
@@ -263,7 +263,7 @@ function fe(e, t, n) {
 			if (t.byDay) for (let e of t.byDay) {
 				let { n: t, weekday: n } = M(e);
 				if (t) {
-					let e = de(i, a, n, t);
+					let e = ue(i, a, n, t);
 					e && o.push(e);
 				} else for (let e = 1; e <= m(i, a); e++) {
 					let t = new Date(i, a, e);
@@ -277,7 +277,7 @@ function fe(e, t, n) {
 					t >= 1 && t <= r && o.push(new Date(i, a, t));
 				}
 			}
-			return o = o.sort((e, t) => e - t).map((t) => ue(t, e)), {
+			return o = o.sort((e, t) => e - t).map((t) => F(t, e)), {
 				periodStart: r,
 				dates: o
 			};
@@ -286,13 +286,13 @@ function fe(e, t, n) {
 			let r = e.getFullYear() + n * t.interval, i = new Date(r, e.getMonth(), e.getDate()), a = i.getMonth() === e.getMonth();
 			return {
 				periodStart: new Date(r, 0, 1),
-				dates: a ? [ue(i, e)] : []
+				dates: a ? [F(i, e)] : []
 			};
 		}
 		default: return null;
 	}
 }
-function pe(e, t, n) {
+function fe(e, t, n) {
 	if (t.count || n <= e) return 0;
 	let r;
 	switch (t.freq) {
@@ -312,20 +312,20 @@ function pe(e, t, n) {
 	}
 	return Math.max(0, Math.floor(r) - 1);
 }
-function* me(e, t, { before: n = null, after: r = null, maxPeriods: i = 5e4 } = {}) {
+function* pe(e, t, { before: n = null, after: r = null, maxPeriods: i = 5e4 } = {}) {
 	let a = N(t);
 	if (!a) {
 		yield l(e);
 		return;
 	}
-	let o = 0, s = r ? pe(e, a, r) : 0;
+	let o = 0, s = r ? fe(e, a, r) : 0;
 	for (let t = s; t < s + i; t++) {
-		let { periodStart: r, dates: i } = fe(e, a, t);
+		let { periodStart: r, dates: i } = de(e, a, t);
 		if (n && r >= n || a.until && r > a.until) return;
 		for (let t of i) if (!(t < e) && (a.until && t > a.until || n && t >= n || (yield t, o++, a.count && o >= a.count))) return;
 	}
 }
-function he(e, t, n) {
+function me(e, t, n) {
 	let r = N(e.rrule), i = e.end - e.start;
 	if (!r) return e.start < n && (e.end > t || i === 0 && e.start >= t) ? [{
 		start: l(e.start),
@@ -333,7 +333,7 @@ function he(e, t, n) {
 		key: D(e.start)
 	}] : [];
 	let a = new Set(e.exceptionDates || []), o = new Date(t.getTime() - i), s = [];
-	for (let c of me(e.start, r, {
+	for (let c of pe(e.start, r, {
 		before: n,
 		after: o
 	})) {
@@ -348,12 +348,12 @@ function he(e, t, n) {
 	}
 	return s;
 }
-function ge(e, t, n) {
+function he(e, t, n) {
 	let r = 0;
-	for (let i of me(e, t, { before: n })) r++;
+	for (let i of pe(e, t, { before: n })) r++;
 	return r;
 }
-function _e(e, t) {
+function ge(e, t) {
 	let n = N(e);
 	if (!n || !t) return n;
 	let r = { ...n };
@@ -362,34 +362,34 @@ function _e(e, t) {
 		return n ? `${n}${i}` : i;
 	})), n.byMonthDay && (r.byMonthDay = n.byMonthDay.map((e) => e > 0 ? Math.min(31, Math.max(1, e + t)) : e)), r;
 }
-var ve = {
+var _e = {
 	DAILY: ["day", "days"],
 	WEEKLY: ["week", "weeks"],
 	MONTHLY: ["month", "months"],
 	YEARLY: ["year", "years"]
-}, ye = {
+}, ve = {
 	1: "first",
 	2: "second",
 	3: "third",
 	4: "fourth",
 	5: "fifth",
 	"-1": "last"
-}, be = [
+}, ye = [
 	"MO",
 	"TU",
 	"WE",
 	"TH",
 	"FR"
 ];
-function F(e, t, n) {
+function I(e, t, n) {
 	let r = N(e);
 	if (!r) return "Does not repeat";
 	let i = (e, t = "short") => k(new Date(2024, 0, 7 + O.indexOf(e)), { weekday: t }, n), a, o = (r.byDay || []).map((e) => M(e));
-	if (r.freq === "DAILY" && o.length === 5 && be.every((e) => o.some((t) => t.code === e)) && r.interval === 1) a = "Every weekday";
-	else if (a = r.interval === 1 ? `Every ${ve[r.freq][0]}` : `Every ${r.interval} ${ve[r.freq][1]}`, r.freq === "WEEKLY") {
+	if (r.freq === "DAILY" && o.length === 5 && ye.every((e) => o.some((t) => t.code === e)) && r.interval === 1) a = "Every weekday";
+	else if (a = r.interval === 1 ? `Every ${_e[r.freq][0]}` : `Every ${r.interval} ${_e[r.freq][1]}`, r.freq === "WEEKLY") {
 		let e = o.length ? o.map((e) => e.code) : t ? [O[t.getDay()]] : [];
 		e.length && (a += ` on ${oe.filter((t) => e.includes(t)).map((e) => i(e)).join(", ")}`);
-	} else r.freq === "MONTHLY" ? o.length && o[0].n ? a += ` on the ${ye[o[0].n] || `${o[0].n}th`} ${i(o[0].code, "long")}` : r.byMonthDay ? a += ` on day ${r.byMonthDay.join(", ")}` : t && (a += ` on day ${t.getDate()}`) : r.freq === "YEARLY" && t && (a += ` on ${k(t, {
+	} else r.freq === "MONTHLY" ? o.length && o[0].n ? a += ` on the ${ve[o[0].n] || `${o[0].n}th`} ${i(o[0].code, "long")}` : r.byMonthDay ? a += ` on day ${r.byMonthDay.join(", ")}` : t && (a += ` on day ${t.getDate()}`) : r.freq === "YEARLY" && t && (a += ` on ${k(t, {
 		month: "long",
 		day: "numeric"
 	}, n)}`);
@@ -401,8 +401,8 @@ function F(e, t, n) {
 }
 //#endregion
 //#region src/core/project.js
-var xe = 0, Se = "_new_", I = (e) => typeof e == "string" && e.startsWith("_new_"), L = () => `${Se}${++xe}`, R = ["resources", "events"];
-function Ce(e) {
+var be = 0, xe = "_new_", L = (e) => typeof e == "string" && e.startsWith("_new_"), R = () => `${xe}${++be}`, z = ["resources", "events"];
+function Se(e) {
 	let t = c(e.start) ?? d(/* @__PURE__ */ new Date()), n = c(e.end);
 	n ||= f(t, e.duration ?? 60), n < t && (n = new Date(t));
 	let r = !!e.allDay;
@@ -415,7 +415,7 @@ function Ce(e) {
 	e.rrule && (i = P(e.rrule));
 	let a = {
 		...e,
-		id: e.id ?? L(),
+		id: e.id ?? R(),
 		title: e.title ?? "",
 		start: t,
 		end: n,
@@ -424,34 +424,34 @@ function Ce(e) {
 		color: e.color ?? null,
 		notes: e.notes ?? "",
 		rrule: i,
-		exceptionDates: i ? [...new Set((e.exceptionDates || []).map(we))].sort() : [],
+		exceptionDates: i ? [...new Set((e.exceptionDates || []).map(Ce))].sort() : [],
 		recurringEventId: e.recurringEventId ?? null,
 		originalDateKey: e.originalDateKey ?? null
 	};
 	return delete a.duration, Object.freeze(a);
 }
-function we(e) {
+function Ce(e) {
 	if (e instanceof Date) return D(e);
 	let t = String(e);
 	return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : D(c(t));
 }
-function Te(e) {
+function we(e) {
 	return Object.freeze({
 		...e,
-		id: e.id ?? L(),
+		id: e.id ?? R(),
 		name: e.name ?? ""
 	});
 }
-var Ee = () => {
+var Te = () => {
 	let e = {};
-	for (let t of R) e[t] = {
+	for (let t of z) e[t] = {
 		added: /* @__PURE__ */ new Set(),
 		updated: /* @__PURE__ */ new Map(),
 		removed: /* @__PURE__ */ new Map()
 	};
 	return e;
 };
-function De(e, t) {
+function Ee(e, t) {
 	let n = /* @__PURE__ */ new Set([...Object.keys(e), ...Object.keys(t)]), r = [];
 	for (let i of n) {
 		let n = e[i], a = t[i];
@@ -459,15 +459,15 @@ function De(e, t) {
 	}
 	return r;
 }
-var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new Set([
+var De = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, Oe = /* @__PURE__ */ new Set([
 	"id",
 	"rrule",
 	"exceptionDates",
 	"recurringEventId",
 	"originalDateKey"
-]), Ae = class extends n {
+]), ke = class extends n {
 	constructor({ events: e = [], resources: t = [], undoLimit: n = 100 } = {}) {
-		super(), this._events = /* @__PURE__ */ new Map(), this._resources = /* @__PURE__ */ new Map(), this._resourceOrder = [], this._undo = [], this._redo = [], this._tx = null, this._replaying = !1, this._changes = Ee(), this._cache = {}, this.undoLimit = n, this.version = 0, this.subscribe = (e) => this.on("change", e), this.getVersion = () => this.version, this.loadData({
+		super(), this._events = /* @__PURE__ */ new Map(), this._resources = /* @__PURE__ */ new Map(), this._resourceOrder = [], this._undo = [], this._redo = [], this._tx = null, this._replaying = !1, this._changes = Te(), this._cache = {}, this.undoLimit = n, this.version = 0, this.subscribe = (e) => this.on("change", e), this.getVersion = () => this.version, this.loadData({
 			events: e,
 			resources: t
 		});
@@ -487,7 +487,7 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 	getEventsInRange(e, t, { resourceIds: n = null, filter: r = null } = {}) {
 		let i = n ? new Set(n) : null, a = [];
 		for (let n of this._events.values()) if ((!i || i.has(n.resourceId)) && (!r || r(n))) {
-			if (n.rrule) for (let r of he(n, e, t)) a.push({
+			if (n.rrule) for (let r of me(n, e, t)) a.push({
 				...n,
 				start: r.start,
 				end: r.end,
@@ -513,18 +513,18 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 		if (t) {
 			this._resources.clear(), this._resourceOrder = [];
 			for (let e of t) {
-				let t = Te(e);
+				let t = we(e);
 				this._resources.set(t.id, t), this._resourceOrder.push(t.id);
 			}
 		}
 		if (e) {
 			this._events.clear();
 			for (let t of e) {
-				let e = Ce(t);
+				let e = Se(t);
 				this._events.set(e.id, e);
 			}
 		}
-		n || (this._undo = [], this._redo = []), this._changes = Ee(), this._bump({ type: "load" });
+		n || (this._undo = [], this._redo = []), this._changes = Te(), this._bump({ type: "load" });
 	}
 	toJSON() {
 		let e = (e) => {
@@ -538,9 +538,9 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 		};
 	}
 	addEvent(e) {
-		let t = Ce({
+		let t = Se({
 			...e,
-			id: e.id ?? L()
+			id: e.id ?? R()
 		});
 		return this._do({
 			store: "events",
@@ -551,12 +551,12 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 	updateEvent(e, t) {
 		let n = this._events.get(e);
 		if (!n) throw Error(`Event ${e} not found`);
-		let r = Ce({
+		let r = Se({
 			...n,
 			...t,
 			id: e
 		});
-		return De(n, r).length ? (this._do({
+		return Ee(n, r).length ? (this._do({
 			store: "events",
 			type: "update",
 			id: e,
@@ -587,7 +587,7 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 		if (n === "this") return this.transaction(() => {
 			this.updateEvent(r.id, { exceptionDates: [...r.exceptionDates, e.occurrenceKey] });
 			let n = {};
-			for (let [e, t] of Object.entries(r)) ke.has(e) || (n[e] = t);
+			for (let [e, t] of Object.entries(r)) Oe.has(e) || (n[e] = t);
 			let { rrule: o, exceptionDates: s, ...c } = t;
 			return this.addEvent({
 				...n,
@@ -598,7 +598,7 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 				originalDateKey: e.occurrenceKey
 			});
 		}, "Edit occurrence");
-		let s = i - e.start, l = a - i, u = y(i, e.start), d = "rrule" in t, p = (e) => d ? t.rrule : u ? P(_e(e, u)) : e;
+		let s = i - e.start, l = a - i, u = y(i, e.start), d = "rrule" in t, p = (e) => d ? t.rrule : u ? P(ge(e, u)) : e;
 		if (n === "all" || o) {
 			let e = new Date(r.start.getTime() + s);
 			return this.updateEvent(r.id, {
@@ -606,11 +606,11 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 				start: e,
 				end: new Date(e.getTime() + l),
 				rrule: p(r.rrule),
-				exceptionDates: Oe(t.exceptionDates ?? r.exceptionDates, u)
+				exceptionDates: De(t.exceptionDates ?? r.exceptionDates, u)
 			});
 		}
 		return this.transaction(() => {
-			let n = N(r.rrule), o = ge(r.start, n, e.start), s = { ...n };
+			let n = N(r.rrule), o = he(r.start, n, e.start), s = { ...n };
 			delete s.count, s.until = /* @__PURE__ */ new Date(e.start.getTime() - 1e3), this.updateEvent(r.id, {
 				rrule: P(s),
 				exceptionDates: r.exceptionDates.filter((t) => t < e.occurrenceKey)
@@ -618,14 +618,14 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 			let c = { ...n };
 			n.count && (c.count = Math.max(1, n.count - o));
 			let l = {};
-			for (let [e, t] of Object.entries(r)) ke.has(e) || (l[e] = t);
+			for (let [e, t] of Object.entries(r)) Oe.has(e) || (l[e] = t);
 			return this.addEvent({
 				...l,
 				...t,
 				start: i,
 				end: a,
-				rrule: d ? t.rrule : P(u ? _e(c, u) : c),
-				exceptionDates: Oe(r.exceptionDates.filter((t) => t >= e.occurrenceKey), u)
+				rrule: d ? t.rrule : P(u ? ge(c, u) : c),
+				exceptionDates: De(r.exceptionDates.filter((t) => t >= e.occurrenceKey), u)
 			});
 		}, "Edit series");
 	}
@@ -642,9 +642,9 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 		}
 	}
 	addResource(e, t = this._resourceOrder.length) {
-		let n = Te({
+		let n = we({
 			...e,
-			id: e.id ?? L()
+			id: e.id ?? R()
 		});
 		return this._do({
 			store: "resources",
@@ -656,12 +656,12 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 	updateResource(e, t) {
 		let n = this._resources.get(e);
 		if (!n) throw Error(`Resource ${e} not found`);
-		let r = Te({
+		let r = we({
 			...n,
 			...t,
 			id: e
 		});
-		return De(n, r).length ? (this._do({
+		return Ee(n, r).length ? (this._do({
 			store: "resources",
 			type: "update",
 			id: e,
@@ -801,7 +801,7 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 		} else if (e.type === "update") {
 			if (t.added.has(e.id)) return;
 			let n = t.updated.get(e.id) ?? /* @__PURE__ */ new Set();
-			for (let t of De(e.before, e.after)) n.add(t);
+			for (let t of Ee(e.before, e.after)) n.add(t);
 			n.size && t.updated.set(e.id, n);
 		} else if (e.type === "remove") {
 			let n = e.record.id;
@@ -813,7 +813,7 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 		}
 	}
 	get hasChanges() {
-		return R.some((e) => {
+		return z.some((e) => {
 			let t = this._changes[e];
 			return t.added.size || t.updated.size || t.removed.size;
 		});
@@ -823,7 +823,7 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 	}
 	_serializeChanges(e, t) {
 		let n = (e) => e instanceof Date ? t(e) : e, r = {};
-		for (let t of R) {
+		for (let t of z) {
 			let i = e[t], a = t === "events" ? this._events : this._resources, o = {}, s = [...i.added].filter((e) => a.has(e)).map((e) => {
 				let { id: t, ...r } = a.get(e), i = { $phantomId: e };
 				for (let [e, t] of Object.entries(r)) i[e] = n(t);
@@ -839,10 +839,10 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 	}
 	_takeChanges() {
 		let e = this._changes;
-		return this._changes = Ee(), e;
+		return this._changes = Te(), e;
 	}
 	_restoreChanges(e) {
-		for (let t of R) {
+		for (let t of z) {
 			let n = this._changes[t], r = e[t];
 			for (let e of r.added) n.removed.has(e) ? n.removed.delete(e) : (n.added.add(e), n.updated.delete(e));
 			for (let [e, t] of r.updated) {
@@ -856,7 +856,7 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 		this._bump({ type: "changes" });
 	}
 	applySyncResponse(e = {}) {
-		for (let t of R) {
+		for (let t of z) {
 			let n = e[t];
 			if (!n) continue;
 			let r = t === "events" ? this._events : this._resources;
@@ -865,11 +865,11 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 				n != null && r.has(n) && a != null && a !== n && this._remapId(t, n, a), a ??= n;
 				let o = r.get(a);
 				if (!o) continue;
-				let s = t === "events" ? Ce({
+				let s = t === "events" ? Se({
 					...o,
 					...i,
 					id: a
-				}) : Te({
+				}) : we({
 					...o,
 					...i,
 					id: a
@@ -923,8 +923,8 @@ var Oe = (e, t) => t ? e.map((e) => D(p(c(e), t))) : e, ke = /* @__PURE__ */ new
 			newId: n
 		});
 	}
-}, je = (e) => Array.isArray(e) ? e : e && Array.isArray(e.rows) ? e.rows : void 0;
-function Me({ loadUrl: e, syncUrl: t, headers: n = {}, fetchOptions: r = {} } = {}) {
+}, Ae = (e) => Array.isArray(e) ? e : e && Array.isArray(e.rows) ? e.rows : void 0;
+function je({ loadUrl: e, syncUrl: t, headers: n = {}, fetchOptions: r = {} } = {}) {
 	return {
 		async load(t) {
 			if (!e) throw Error("CrudManager: loadUrl is not set");
@@ -951,7 +951,7 @@ function Me({ loadUrl: e, syncUrl: t, headers: n = {}, fetchOptions: r = {} } = 
 		}
 	};
 }
-function Ne({ data: e = {
+function Me({ data: e = {
 	resources: [],
 	events: []
 }, latency: t = 250, failRate: n = 0, onRequest: r } = {}) {
@@ -999,7 +999,7 @@ function Ne({ data: e = {
 					let t = `${n === "events" ? "ev" : "res"}-${++a}`;
 					s[e.$phantomId] = t;
 					let { $phantomId: r, ...c } = e;
-					n === "events" && I(c.resourceId) && s[c.resourceId] && (c.resourceId = s[c.resourceId]), n === "events" && I(c.recurringEventId) && s[c.recurringEventId] && (c.recurringEventId = s[c.recurringEventId]), i[n].set(t, {
+					n === "events" && L(c.resourceId) && s[c.resourceId] && (c.resourceId = s[c.resourceId]), n === "events" && L(c.recurringEventId) && s[c.recurringEventId] && (c.recurringEventId = s[c.recurringEventId]), i[n].set(t, {
 						...c,
 						id: t
 					}), o.push({
@@ -1009,7 +1009,7 @@ function Ne({ data: e = {
 				}
 				for (let e of r.updated || []) {
 					let t = { ...e };
-					n === "events" && I(t.resourceId) && s[t.resourceId] && (t.resourceId = s[t.resourceId], o.push({
+					n === "events" && L(t.resourceId) && s[t.resourceId] && (t.resourceId = s[t.resourceId], o.push({
 						id: e.id,
 						resourceId: t.resourceId
 					})), i[n].set(e.id, {
@@ -1028,9 +1028,9 @@ function Ne({ data: e = {
 		}
 	};
 }
-var Pe = class extends n {
+var Ne = class extends n {
 	constructor(e, t = {}) {
-		super(), this.project = e, this.serializeDate = t.serializeDate ?? ((e) => e.toISOString()), this.transport = t.transport ?? Me(t), this.autoSyncDelay = t.autoSyncDelay ?? 800, this.status = "idle", this.lastError = null, this._inflight = null, this._queued = !1, this._timer = null, this._unsub = null, t.autoSync && this.setAutoSync(!0);
+		super(), this.project = e, this.serializeDate = t.serializeDate ?? ((e) => e.toISOString()), this.transport = t.transport ?? je(t), this.autoSyncDelay = t.autoSyncDelay ?? 800, this.status = "idle", this.lastError = null, this._inflight = null, this._queued = !1, this._timer = null, this._unsub = null, t.autoSync && this.setAutoSync(!0);
 	}
 	setAutoSync(e) {
 		this._unsub?.(), this._unsub = null, e && (this._unsub = this.project.on("change", (e) => {
@@ -1057,8 +1057,8 @@ var Pe = class extends n {
 			let t = await this.transport.load(e);
 			if (t && t.success === !1) throw Error(t.message || "Load failed");
 			return this.project.loadData({
-				resources: je(t?.resources),
-				events: je(t?.events)
+				resources: Ae(t?.resources),
+				events: Ae(t?.events)
 			}), this._setStatus("idle"), this.emit("load", t), t;
 		} catch (e) {
 			throw this._setStatus("error", e), this.emit("loadFail", e), e;
@@ -1092,7 +1092,7 @@ var Pe = class extends n {
 	destroy() {
 		clearTimeout(this._timer), this._unsub?.();
 	}
-}, Fe = "http://www.w3.org/2000/svg", Ie = /* @__PURE__ */ new Set([
+}, Pe = "http://www.w3.org/2000/svg", Fe = /* @__PURE__ */ new Set([
 	"svg",
 	"path",
 	"g",
@@ -1100,7 +1100,7 @@ var Pe = class extends n {
 	"rect",
 	"line",
 	"polyline"
-]), Le = /* @__PURE__ */ new Set([
+]), Ie = /* @__PURE__ */ new Set([
 	"value",
 	"checked",
 	"disabled",
@@ -1108,7 +1108,7 @@ var Pe = class extends n {
 	"indeterminate",
 	"readOnly",
 	"multiple"
-]), Re = /* @__PURE__ */ new Set([
+]), Le = /* @__PURE__ */ new Set([
 	"opacity",
 	"zIndex",
 	"flex",
@@ -1118,26 +1118,26 @@ var Pe = class extends n {
 	"lineHeight",
 	"order"
 ]);
-function ze(e, t) {
-	for (let n of t) n != null && n !== !1 && n !== !0 && (Array.isArray(n) ? ze(e, n) : n instanceof Node ? e.appendChild(n) : e.appendChild(document.createTextNode(String(n))));
+function Re(e, t) {
+	for (let n of t) n != null && n !== !1 && n !== !0 && (Array.isArray(n) ? Re(e, n) : n instanceof Node ? e.appendChild(n) : e.appendChild(document.createTextNode(String(n))));
 	return e;
 }
-function Be(e, t) {
-	for (let [n, r] of Object.entries(t)) r != null && r !== !1 && (n.startsWith("--") ? e.style.setProperty(n, String(r)) : e.style[n] = typeof r == "number" && !Re.has(n) ? `${r}px` : r);
+function ze(e, t) {
+	for (let [n, r] of Object.entries(t)) r != null && r !== !1 && (n.startsWith("--") ? e.style.setProperty(n, String(r)) : e.style[n] = typeof r == "number" && !Le.has(n) ? `${r}px` : r);
 }
-function z(e, t = null, ...n) {
-	let r = Ie.has(e), i = r ? document.createElementNS(Fe, e) : document.createElement(e), a = null;
-	if (t) for (let [e, n] of Object.entries(t)) n != null && n !== !1 && (e === "class" ? r ? i.setAttribute("class", n) : i.className = n : e === "style" ? typeof n == "string" ? i.style.cssText = n : Be(i, n) : e === "dataset" ? Object.assign(i.dataset, n) : e === "html" ? i.innerHTML = n : e.startsWith("on") && typeof n == "function" ? i.addEventListener(e.slice(2).toLowerCase(), n) : Le.has(e) ? (a ??= []).push([e, n]) : i.setAttribute(e, n === !0 ? "" : String(n)));
-	if (ze(i, n), a) for (let [e, t] of a) i[e] = t;
+function B(e, t = null, ...n) {
+	let r = Fe.has(e), i = r ? document.createElementNS(Pe, e) : document.createElement(e), a = null;
+	if (t) for (let [e, n] of Object.entries(t)) n != null && n !== !1 && (e === "class" ? r ? i.setAttribute("class", n) : i.className = n : e === "style" ? typeof n == "string" ? i.style.cssText = n : ze(i, n) : e === "dataset" ? Object.assign(i.dataset, n) : e === "html" ? i.innerHTML = n : e.startsWith("on") && typeof n == "function" ? i.addEventListener(e.slice(2).toLowerCase(), n) : Ie.has(e) ? (a ??= []).push([e, n]) : i.setAttribute(e, n === !0 ? "" : String(n)));
+	if (Re(i, n), a) for (let [e, t] of a) i[e] = t;
 	return i;
 }
-function B(e, t = 16) {
-	return z("svg", {
+function V(e, t = 16) {
+	return B("svg", {
 		viewBox: "0 0 16 16",
 		width: t,
 		height: t,
 		"aria-hidden": "true"
-	}, z("path", {
+	}, B("path", {
 		d: e,
 		fill: "none",
 		stroke: "currentColor",
@@ -1146,7 +1146,7 @@ function B(e, t = 16) {
 		"stroke-linejoin": "round"
 	}));
 }
-var V = {
+var H = {
 	prev: "M10 3 5 8l5 5",
 	next: "M6 3l5 5-5 5",
 	down: "M3 6l5 5 5-5",
@@ -1158,18 +1158,18 @@ var V = {
 	sidebar: "M2.5 3.5h11v9h-11zM6 3.5v9",
 	repeat: "M11.5 2.5 13.5 4.5 11.5 6.5M13.5 4.5H5a2.5 2.5 0 0 0-2.5 2.5v.5M4.5 13.5 2.5 11.5 4.5 9.5M2.5 11.5H11a2.5 2.5 0 0 0 2.5-2.5v-.5"
 };
-function Ve(e) {
+function Be(e) {
 	let t = document.createElement("template");
 	return t.innerHTML = e, t.content;
 }
-var He = {
+var Ve = {
 	"&": "&amp;",
 	"<": "&lt;",
 	">": "&gt;",
 	"\"": "&quot;",
 	"'": "&#39;"
-}, Ue = (e) => String(e ?? "").replace(/[&<>"']/g, (e) => He[e]);
-function We(e, t) {
+}, He = (e) => String(e ?? "").replace(/[&<>"']/g, (e) => Ve[e]);
+function Ue(e, t) {
 	let n = document.activeElement, r = n && e.contains(n) ? n.closest("[data-key]") : null, i = r?.dataset.key, a = null;
 	if (i && n === r && typeof n.selectionStart == "number") try {
 		a = [n.selectionStart, n.selectionEnd];
@@ -1182,31 +1182,31 @@ function We(e, t) {
 		o.setSelectionRange(a[0], a[1]);
 	} catch {}
 }
-var Ge = (e) => typeof requestAnimationFrame == "function" ? requestAnimationFrame(e) : setTimeout(e, 16), Ke = (e) => typeof cancelAnimationFrame == "function" ? cancelAnimationFrame(e) : clearTimeout(e), qe = {
+var We = (e) => typeof requestAnimationFrame == "function" ? requestAnimationFrame(e) : setTimeout(e, 16), Ge = (e) => typeof cancelAnimationFrame == "function" ? cancelAnimationFrame(e) : clearTimeout(e), Ke = {
 	day: "Day",
 	week: "Week",
 	month: "Month",
 	timeline: "Timeline",
 	list: "List"
 };
-function Je(e) {
+function qe(e) {
 	let t = () => e.sync().catch(() => {});
-	return e.status === "syncing" || e.status === "loading" ? z("span", { class: "ck-sync ck-sync-busy" }, e.status === "loading" ? "Loading…" : "Saving…") : e.status === "error" ? z("button", {
+	return e.status === "syncing" || e.status === "loading" ? B("span", { class: "ck-sync ck-sync-busy" }, e.status === "loading" ? "Loading…" : "Saving…") : e.status === "error" ? B("button", {
 		type: "button",
 		class: "ck-sync ck-sync-error",
 		title: e.lastError?.message,
 		"data-key": "sync",
 		onClick: t
-	}, "Not saved · Retry") : e.hasChanges ? z("button", {
+	}, "Not saved · Retry") : e.hasChanges ? B("button", {
 		type: "button",
 		class: "ck-sync ck-sync-dirty",
 		title: "Save changes (Ctrl+S)",
 		"data-key": "sync",
 		onClick: t
-	}, "Unsaved changes") : z("span", { class: "ck-sync ck-sync-ok" }, "All changes saved");
+	}, "Unsaved changes") : B("span", { class: "ck-sync ck-sync-ok" }, "All changes saved");
 }
-function Ye(e) {
-	let { project: t, config: n } = e, r = typeof n.toolbarItems == "function" ? n.toolbarItems(e) : n.toolbarItems, i = (e, t, n, r, i = {}) => z("button", {
+function Je(e) {
+	let { project: t, config: n } = e, r = typeof n.toolbarItems == "function" ? n.toolbarItems(e) : n.toolbarItems, i = (e, t, n, r, i = {}) => B("button", {
 		type: "button",
 		class: "ck-icon-btn",
 		"aria-label": t,
@@ -1214,51 +1214,51 @@ function Ye(e) {
 		"data-key": e,
 		onClick: r,
 		...i
-	}, B(n));
+	}, V(n));
 	return [
-		n.showSidebar && i("sidebar", "Toggle sidebar", V.sidebar, () => e.toggleSidebar(), {
+		n.showSidebar && i("sidebar", "Toggle sidebar", H.sidebar, () => e.toggleSidebar(), {
 			class: "ck-icon-btn ck-sidebar-toggle",
 			"aria-pressed": String(e.sidebarOpen)
 		}),
-		z("button", {
+		B("button", {
 			type: "button",
 			class: "ck-btn",
 			"data-key": "today",
 			onClick: () => e.today()
 		}, "Today"),
-		z("div", { class: "ck-nav" }, i("prev", "Previous", V.prev, () => e.prev()), i("next", "Next", V.next, () => e.next())),
-		z("h2", {
+		B("div", { class: "ck-nav" }, i("prev", "Previous", H.prev, () => e.prev()), i("next", "Next", H.next, () => e.next())),
+		B("h2", {
 			class: "ck-title",
 			"aria-live": "polite"
 		}, e.title),
-		z("span", { class: "ck-spacer" }),
+		B("span", { class: "ck-spacer" }),
 		r,
-		e.crudManager && Je(e.crudManager),
-		z("div", { class: "ck-group" }, i("undo", t.canUndo ? `Undo ${t.undoLabel?.toLowerCase()} (Ctrl+Z)` : "Nothing to undo", V.undo, () => e.undo(), {
+		e.crudManager && qe(e.crudManager),
+		B("div", { class: "ck-group" }, i("undo", t.canUndo ? `Undo ${t.undoLabel?.toLowerCase()} (Ctrl+Z)` : "Nothing to undo", H.undo, () => e.undo(), {
 			disabled: !t.canUndo,
 			"aria-label": "Undo"
-		}), i("redo", t.canRedo ? `Redo ${t.redoLabel?.toLowerCase()} (Ctrl+Shift+Z)` : "Nothing to redo", V.redo, () => e.redo(), {
+		}), i("redo", t.canRedo ? `Redo ${t.redoLabel?.toLowerCase()} (Ctrl+Shift+Z)` : "Nothing to redo", H.redo, () => e.redo(), {
 			disabled: !t.canRedo,
 			"aria-label": "Redo"
 		})),
-		e.view === "timeline" && z("div", { class: "ck-group" }, i("zoom-out", "Zoom out", V.minus, () => e.setZoom(e.zoom / 1.5)), i("zoom-in", "Zoom in", V.plus, () => e.setZoom(e.zoom * 1.5))),
-		n.views.length > 1 && z("div", {
+		e.view === "timeline" && B("div", { class: "ck-group" }, i("zoom-out", "Zoom out", H.minus, () => e.setZoom(e.zoom / 1.5)), i("zoom-in", "Zoom in", H.plus, () => e.setZoom(e.zoom * 1.5))),
+		n.views.length > 1 && B("div", {
 			class: "ck-segmented",
 			role: "tablist",
 			"aria-label": "View"
-		}, n.views.map((t) => z("button", {
+		}, n.views.map((t) => B("button", {
 			type: "button",
 			role: "tab",
 			"aria-selected": String(e.view === t),
 			class: e.view === t ? "ck-on" : "",
 			"data-key": `view-${t}`,
 			onClick: () => e.setView(t)
-		}, n.viewLabels?.[t] || qe[t] || t)))
+		}, n.viewLabels?.[t] || Ke[t] || t)))
 	];
 }
 //#endregion
 //#region src/ui/content.js
-var H = {
+var U = {
 	cobalt: "#2b59c3",
 	teal: "#138a7e",
 	plum: "#8a4fb0",
@@ -1267,11 +1267,11 @@ var H = {
 	green: "#3e8e41",
 	coral: "#d0613c",
 	slate: "#5a6b85"
-}, U = (e) => e && H[e] || e || null, W = (e, t) => e == null ? t : !!e, G = (e) => W(e?.startEditable, W(e?.editable, !0)), K = (e) => W(e?.durationEditable, W(e?.editable, !0)), Xe = (e) => W(e?.resourceEditable, W(e?.editable, !0)), q = (e) => e?.display === "background", Ze = (e) => Array.isArray(e.resourceIds) ? e.resourceIds : e.resourceId == null ? null : [e.resourceId], Qe = () => {
-	let e = B(V.repeat, 11);
+}, W = (e) => e && U[e] || e || null, G = (e, t) => e == null ? t : !!e, K = (e) => G(e?.startEditable, G(e?.editable, !0)), q = (e) => G(e?.durationEditable, G(e?.editable, !0)), Ye = (e) => G(e?.resourceEditable, G(e?.editable, !0)), J = (e) => e?.display === "background", Xe = (e) => Array.isArray(e.resourceIds) ? e.resourceIds : e.resourceId == null ? null : [e.resourceId], Ze = () => {
+	let e = V(H.repeat, 11);
 	return e.setAttribute("class", "ck-icon-repeat"), e.removeAttribute("aria-hidden"), e.setAttribute("role", "img"), e.setAttribute("aria-label", "Repeats"), e;
 };
-function J(e, t, n, r = !1) {
+function Y(e, t, n, r = !1) {
 	let { locale: i, config: a } = e, o = e.resourcesById.get(t.resourceId) || null, s = t.allDay ? "" : n === "month" ? A(t.start, i) : j(t.start, t.end, i);
 	if (a.eventRenderer) {
 		let i = a.eventRenderer({
@@ -1282,21 +1282,21 @@ function J(e, t, n, r = !1) {
 			compact: r,
 			calendar: e
 		});
-		if (i != null && i !== !1) return typeof i == "string" ? Ve(i) : i;
+		if (i != null && i !== !1) return typeof i == "string" ? Be(i) : i;
 	}
 	let c = t.isOccurrence || t.recurringEventId, l = t.title || "Untitled";
 	if (r) {
-		let e = s ? z("span", { class: "ck-ev-time" }, n === "month" ? s : A(t.start, i)) : null;
-		return z("span", { class: "ck-ev-line" }, n === "month" && e, z("span", { class: "ck-ev-title" }, l), n !== "month" && e, c && Qe());
+		let e = s ? B("span", { class: "ck-ev-time" }, n === "month" ? s : A(t.start, i)) : null;
+		return B("span", { class: "ck-ev-line" }, n === "month" && e, B("span", { class: "ck-ev-title" }, l), n !== "month" && e, c && Ze());
 	}
 	let u = a.showResourceInEvents && o && n !== "timeline";
-	return q(t) && n !== "list" && n !== "month" ? z("span", { class: "ck-ev-title" }, l) : [
-		z("span", { class: "ck-ev-title" }, l, c && Qe()),
-		s && n !== "list" && z("span", { class: "ck-ev-time" }, s),
-		u && z("span", { class: "ck-ev-meta" }, o.name)
+	return J(t) && n !== "list" && n !== "month" ? B("span", { class: "ck-ev-title" }, l) : [
+		B("span", { class: "ck-ev-title" }, l, c && Ze()),
+		s && n !== "list" && B("span", { class: "ck-ev-time" }, s),
+		u && B("span", { class: "ck-ev-meta" }, o.name)
 	];
 }
-function $e(e, t) {
+function Qe(e, t) {
 	let { locale: n } = e, r = e.resourcesById.get(t.resourceId), i = /* @__PURE__ */ new Date(t.end - 1), a = t.start.toDateString() === i.toDateString(), o = t.allDay ? a ? k(t.start, {
 		weekday: "long",
 		month: "long",
@@ -1313,20 +1313,20 @@ function $e(e, t) {
 		day: "numeric"
 	}, n)}, ${j(t.start, t.end, n)}`, s = (e.config.editorFields || []).filter((e) => t[e.name]), c = t.notes ? t.notes.length > 140 ? `${t.notes.slice(0, 140)}…` : t.notes : null;
 	return [
-		z("div", { class: "ck-tooltip-title" }, t.title || "Untitled"),
-		z("div", { class: "ck-tooltip-row" }, o),
-		t.rrule && z("div", { class: "ck-tooltip-row" }, F(t.rrule, t.start, n)),
-		r && z("div", { class: "ck-tooltip-row" }, r.name),
+		B("div", { class: "ck-tooltip-title" }, t.title || "Untitled"),
+		B("div", { class: "ck-tooltip-row" }, o),
+		t.rrule && B("div", { class: "ck-tooltip-row" }, I(t.rrule, t.start, n)),
+		r && B("div", { class: "ck-tooltip-row" }, r.name),
 		s.map((e) => {
 			let n = (e.options || []).find((n) => (n?.value ?? n) === t[e.name]);
-			return z("div", { class: "ck-tooltip-row" }, z("span", { class: "ck-tooltip-label" }, e.label), " ", String(n?.label ?? t[e.name]));
+			return B("div", { class: "ck-tooltip-row" }, B("span", { class: "ck-tooltip-label" }, e.label), " ", String(n?.label ?? t[e.name]));
 		}),
-		c && z("div", { class: "ck-tooltip-notes" }, c)
+		c && B("div", { class: "ck-tooltip-notes" }, c)
 	];
 }
-function Y(e, t, n, r, i) {
+function X(e, t, n, r, i) {
 	let a = ["ck-event", n];
-	return t.instanceId === e.selectedId && a.push("ck-selected"), !G(t) && !K(t) && a.push("ck-locked"), t.classNames && a.push(...[].concat(t.classNames)), {
+	return t.instanceId === e.selectedId && a.push("ck-selected"), !K(t) && !q(t) && a.push("ck-locked"), t.classNames && a.push(...[].concat(t.classNames)), {
 		class: a.filter(Boolean).join(" "),
 		style: {
 			...r,
@@ -1346,7 +1346,7 @@ function Y(e, t, n, r, i) {
 }
 //#endregion
 //#region src/ui/MiniMonth.js
-var et = {
+var $e = {
 	selected: null,
 	date: null,
 	weekStartsOn: 1,
@@ -1363,14 +1363,14 @@ var et = {
 	theme: "light",
 	cls: "",
 	scale: 1
-}, tt = (e, ...t) => typeof e == "function" ? e(...t) : null;
-function nt(e, t, { otherMonth: n = !1, strip: r = !1 } = {}) {
+}, et = (e, ...t) => typeof e == "function" ? e(...t) : null;
+function tt(e, t, { otherMonth: n = !1, strip: r = !1 } = {}) {
 	let { locale: i, selected: a, range: o, onSelect: s } = e, c = e.nowDate, l = ["ck-mini-day"];
 	n && l.push("ck-other-month"), o && t >= o.start && t < o.end && l.push("ck-in-range"), v(t, c) && l.push("ck-today"), a && v(t, a) && l.push("ck-selected-day"), e.busy?.(t) && l.push("ck-busy");
-	let u = !!tt(e.disabled, t);
+	let u = !!et(e.disabled, t);
 	u && l.push("ck-disabled");
-	let d = tt(e.dayStyle, t) || null, f = (tt(e.marks, t) || []).slice(0, 4), p = tt(e.dayTitle, t), m = k(t, { dateStyle: "full" }, i);
-	return z("button", {
+	let d = et(e.dayStyle, t) || null, f = (et(e.marks, t) || []).slice(0, 4), p = et(e.dayTitle, t), m = k(t, { dateStyle: "full" }, i);
+	return B("button", {
 		type: "button",
 		class: l.join(" "),
 		"aria-label": p ? `${m}, ${p}` : m,
@@ -1384,56 +1384,56 @@ function nt(e, t, { otherMonth: n = !1, strip: r = !1 } = {}) {
 			boxShadow: d.ring ? `inset 0 0 0 1.5px ${d.ring}` : null
 		} : null,
 		onClick: () => !u && s?.(t)
-	}, r && z("span", { class: "ck-mini-strip-dow" }, k(t, { weekday: "short" }, i)), z("span", { class: "ck-mini-num" }, t.getDate()), f.length > 0 && z("span", {
+	}, r && B("span", { class: "ck-mini-strip-dow" }, k(t, { weekday: "short" }, i)), B("span", { class: "ck-mini-num" }, t.getDate()), f.length > 0 && B("span", {
 		class: "ck-mini-marks",
 		"aria-hidden": "true"
-	}, f.map((e) => z("span", {
+	}, f.map((e) => B("span", {
 		class: "ck-mini-mark",
-		style: { background: U(e?.color) || "currentColor" }
+		style: { background: W(e?.color) || "currentColor" }
 	}))));
 }
-function rt(e, t) {
+function nt(e, t) {
 	let { weekStartsOn: n, locale: r } = e, i = p(t, -((t.getDay() - n + 7) % 7)), a = Array.from({ length: 42 }, (e, t) => p(i, t));
-	return z("div", { class: "ck-mini-grid" }, a.slice(0, 7).map((e) => z("span", {
+	return B("div", { class: "ck-mini-grid" }, a.slice(0, 7).map((e) => B("span", {
 		class: "ck-mini-dow",
 		"aria-hidden": "true"
-	}, k(e, { weekday: "narrow" }, r))), a.map((n) => nt(e, n, { otherMonth: n.getMonth() !== t.getMonth() })));
+	}, k(e, { weekday: "narrow" }, r))), a.map((n) => tt(e, n, { otherMonth: n.getMonth() !== t.getMonth() })));
 }
-function it(e) {
-	let { locale: t, cursor: n, onMove: r } = e, i = (e, t) => z("button", {
+function rt(e) {
+	let { locale: t, cursor: n, onMove: r } = e, i = (e, t) => B("button", {
 		type: "button",
 		class: "ck-icon-btn",
 		"aria-label": t,
 		"data-key": `mini-${e > 0 ? "next" : "prev"}`,
 		onClick: () => r?.(e)
-	}, B(e > 0 ? V.next : V.prev, 14));
+	}, V(e > 0 ? H.next : H.prev, 14));
 	if (e.layout === "strip") {
 		let r = Math.max(1, e.stripDays || 7), a = Array.from({ length: r }, (e, t) => p(n, t)), o = a[r - 1];
-		return z("div", { class: "ck-mini ck-mini-strip" }, z("div", { class: "ck-mini-head" }, z("span", { class: "ck-mini-title" }, a[0].getMonth() === o.getMonth() ? k(a[0], {
+		return B("div", { class: "ck-mini ck-mini-strip" }, B("div", { class: "ck-mini-head" }, B("span", { class: "ck-mini-title" }, a[0].getMonth() === o.getMonth() ? k(a[0], {
 			month: "long",
 			year: "numeric"
 		}, t) : `${k(a[0], { month: "short" }, t)} – ${k(o, {
 			month: "short",
 			year: "numeric"
-		}, t)}`), i(-1, "Earlier days"), i(1, "Later days")), z("div", {
+		}, t)}`), i(-1, "Earlier days"), i(1, "Later days")), B("div", {
 			class: "ck-mini-strip-row",
 			style: { gridTemplateColumns: `repeat(${r}, 1fr)` }
-		}, a.map((t) => nt(e, t, { strip: !0 }))));
+		}, a.map((t) => tt(e, t, { strip: !0 }))));
 	}
 	let a = Math.max(1, e.months || 1), o = Array.from({ length: a }, (e, t) => h(n, t));
-	return z("div", { class: `ck-mini${a > 1 ? " ck-mini-multi" : ""}` }, o.map((n, r) => z("div", { class: "ck-mini-month" }, z("div", { class: "ck-mini-head" }, z("span", { class: "ck-mini-title" }, k(n, {
+	return B("div", { class: `ck-mini${a > 1 ? " ck-mini-multi" : ""}` }, o.map((n, r) => B("div", { class: "ck-mini-month" }, B("div", { class: "ck-mini-head" }, B("span", { class: "ck-mini-title" }, k(n, {
 		month: "long",
 		year: "numeric"
-	}, t)), r === 0 && i(-1, "Previous month"), r === a - 1 && i(1, "Next month")), rt(e, n))));
+	}, t)), r === 0 && i(-1, "Previous month"), r === a - 1 && i(1, "Next month")), nt(e, n))));
 }
-var at = class extends n {
+var it = class extends n {
 	constructor(e = {}) {
 		super();
 		let { appendTo: t, onSelect: n, onMonthChange: r, ...i } = e;
 		this.config = {
-			...et,
+			...$e,
 			...i
-		}, n && this.on("select", ({ date: e }) => n(e)), r && this.on("monthChange", ({ date: e }) => r(e)), this.el = z("div", { class: "ck-root ck-minimonth" }), this._cursor = this._cursorFor(c(this.config.date || this.config.selected) || this._now()), t && this.mount(t);
+		}, n && this.on("select", ({ date: e }) => n(e)), r && this.on("monthChange", ({ date: e }) => r(e)), this.el = B("div", { class: "ck-root ck-minimonth" }), this._cursor = this._cursorFor(c(this.config.date || this.config.selected) || this._now()), t && this.mount(t);
 	}
 	mount(e) {
 		let t = typeof e == "string" ? document.querySelector(e) : e;
@@ -1468,7 +1468,7 @@ var at = class extends n {
 			start: c(e.range.start),
 			end: c(e.range.end)
 		} : null;
-		return this.el.replaceChildren(it({
+		return this.el.replaceChildren(rt({
 			...e,
 			range: t,
 			selected: this.selected,
@@ -1505,7 +1505,7 @@ var at = class extends n {
 };
 //#endregion
 //#region src/ui/Sidebar.js
-function ot(e) {
+function at(e) {
 	let { locale: t, config: n, project: r } = e, i = `${e.date.getFullYear()}-${e.date.getMonth()}`;
 	e._miniKey !== i && (e._miniKey = i, e._miniCursor = _(e.date));
 	let a = e._miniCursor, o = p(a, -((a.getDay() - n.weekStartsOn + 7) % 7)), s = `${r.version}|${+o}`;
@@ -1514,7 +1514,7 @@ function ot(e) {
 		for (let e of r.getEventsInRange(o, p(o, 42))) for (let n = d(e.start); n < e.end; n = p(n, 1)) t.add(+n);
 		e._busyKey = s, e._busy = t;
 	}
-	return it({
+	return rt({
 		locale: t,
 		weekStartsOn: n.weekStartsOn,
 		cursor: a,
@@ -1527,45 +1527,102 @@ function ot(e) {
 		}
 	});
 }
-function st(e) {
-	let t = e.project.resources;
-	if (!t.length) return null;
-	let n = e.hiddenResources, r = n.size === 0, i = !e.filterCollapsed, a = t.length - t.filter((e) => n.has(e.id)).length;
-	return z("div", { class: `ck-filter${i ? "" : " ck-collapsed"}` }, z("div", { class: "ck-filter-head" }, z("button", {
-		type: "button",
-		class: "ck-filter-toggle",
-		"aria-expanded": String(i),
-		"data-key": "filter-toggle",
-		onClick: () => e.toggleResourceFilter()
-	}, B(V.down, 14), z("span", null, e.config.resourceLabel), z("span", { class: "ck-filter-count" }, a === t.length ? String(t.length) : `${a} of ${t.length}`)), z("button", {
-		type: "button",
-		class: "ck-link",
-		"data-key": "filter-all",
-		onClick: () => e.setHiddenResources(r ? t.map((e) => e.id) : [])
-	}, r ? "Hide all" : "Show all")), i && z("ul", { class: "ck-filter-list" }, t.map((t) => z("li", null, z("label", {
+var Z = (e, t) => {
+	let n = e.config.resourceGroupBy, r = n ? t[n] : null;
+	return r == null ? "" : String(r).trim();
+};
+function ot(e) {
+	let t = e.resourceQuery.trim().toLowerCase(), n = e.resourceGroup, r = (e, t) => String(e.name ?? "").localeCompare(String(t.name ?? "")), i = e.project.resources.filter((r) => n && Z(e, r) !== n ? !1 : !t || String(r.name ?? "").toLowerCase().includes(t) || Z(e, r).toLowerCase().includes(t));
+	return e.resourceSort === "name-desc" ? i.sort((e, t) => r(t, e)) : e.resourceSort === "group" ? i.sort((t, n) => (Z(e, t) || "￿").localeCompare(Z(e, n) || "￿") || r(t, n)) : i.sort(r);
+}
+function st(e, t, n) {
+	let r = Z(e, t);
+	return B("li", null, B("label", {
 		class: "ck-filter-item",
-		style: { "--ck-res": U(t.color) || "var(--ck-accent)" }
-	}, z("input", {
+		style: { "--ck-res": W(t.color) || "var(--ck-accent)" },
+		title: r ? `${t.name} · ${r}` : t.name
+	}, B("input", {
 		type: "checkbox",
 		checked: !n.has(t.id),
 		"data-key": `res-${t.id}`,
 		onChange: () => e.setResourceVisible(t.id, n.has(t.id))
-	}), z("span", {
+	}), B("span", {
 		class: "ck-filter-box",
 		"aria-hidden": "true"
-	}), z("span", { class: "ck-filter-name" }, t.name))))));
+	}), B("span", { class: "ck-filter-name" }, t.name), r && e.resourceSort !== "group" && B("span", { class: "ck-filter-group" }, r)));
 }
 function ct(e) {
+	let t = e.project.resources;
+	if (!t.length) return null;
+	let { config: n } = e, r = e.hiddenResources, i = r.size === 0, a = !e.filterCollapsed, o = t.length - t.filter((e) => r.has(e.id)).length, s = n.resourceGroupBy ? [...new Set(t.map((t) => Z(e, t)).filter(Boolean))].sort((e, t) => e.localeCompare(t)) : [], c = n.resourceSearch === !0 || n.resourceSearch === "auto" && t.length > 8, l = !!(e.resourceQuery.trim() || e.resourceGroup), u = a ? ot(e) : [], d = String(n.resourceLabel || "People"), f = String(n.resourceGroupLabel || "Group"), p = l ? B("button", {
+		type: "button",
+		class: "ck-link",
+		"data-key": "filter-only",
+		onClick: () => {
+			let n = new Set(u.map((e) => e.id));
+			e.setHiddenResources(t.filter((e) => !n.has(e.id)).map((e) => e.id));
+		}
+	}, "Show only these") : B("button", {
+		type: "button",
+		class: "ck-link",
+		"data-key": "filter-all",
+		onClick: () => e.setHiddenResources(i ? t.map((e) => e.id) : [])
+	}, i ? "Hide all" : "Show all"), m = null;
+	if (a) {
+		let t;
+		if (e.resourceSort === "group" && s.length) {
+			t = [];
+			let n = null;
+			for (let i of u) {
+				let a = Z(e, i) || `No ${f.toLowerCase()}`;
+				a !== n && (n = a, t.push(B("li", {
+					class: "ck-filter-heading",
+					role: "presentation"
+				}, a))), t.push(st(e, i, r));
+			}
+		} else t = u.map((t) => st(e, t, r));
+		m = B("ul", { class: "ck-filter-list" }, t.length ? t : B("li", { class: "ck-filter-empty" }, `No ${d.toLowerCase()} match`));
+	}
+	let h = a && (c || s.length) ? B("div", { class: "ck-filter-tools" }, c && B("input", {
+		type: "search",
+		class: "ck-filter-search",
+		placeholder: `Search ${d.toLowerCase()}`,
+		"aria-label": `Search ${d.toLowerCase()}`,
+		value: e.resourceQuery,
+		"data-key": "filter-search",
+		onInput: (t) => e.setResourceQuery(t.target.value)
+	}), s.length > 0 && B("div", { class: "ck-filter-selects" }, B("select", {
+		class: "ck-filter-select",
+		"aria-label": `Filter by ${f.toLowerCase()}`,
+		"data-key": "filter-group",
+		value: e.resourceGroup,
+		onChange: (t) => e.setResourceGroup(t.target.value)
+	}, B("option", { value: "" }, `Every ${f.toLowerCase()}`), s.map((n) => B("option", { value: n }, `${n} (${t.filter((t) => Z(e, t) === n).length})`))), B("select", {
+		class: "ck-filter-select",
+		"aria-label": "Sort by",
+		"data-key": "filter-sort",
+		value: e.resourceSort,
+		onChange: (t) => e.setResourceSort(t.target.value)
+	}, B("option", { value: "name" }, "Name A–Z"), B("option", { value: "name-desc" }, "Name Z–A"), B("option", { value: "group" }, `By ${f.toLowerCase()}`)))) : null;
+	return B("div", { class: `ck-filter${a ? "" : " ck-collapsed"}` }, B("div", { class: "ck-filter-head" }, B("button", {
+		type: "button",
+		class: "ck-filter-toggle",
+		"aria-expanded": String(a),
+		"data-key": "filter-toggle",
+		onClick: () => e.toggleResourceFilter()
+	}, V(H.down, 14), B("span", null, d), B("span", { class: "ck-filter-count" }, o === t.length ? String(t.length) : `${o} of ${t.length}`)), p), h, m);
+}
+function lt(e) {
 	let t = typeof e.config.sidebarItems == "function" ? e.config.sidebarItems(e) : e.config.sidebarItems;
 	return [
-		ot(e),
-		st(e),
+		at(e),
+		ct(e),
 		t
 	];
 }
 //#endregion
 //#region src/ui/EventEditor.js
-var lt = [
+var ut = [
 	"MO",
 	"TU",
 	"WE",
@@ -1573,29 +1630,29 @@ var lt = [
 	"FR",
 	"SA",
 	"SU"
-], ut = [
+], dt = [
 	"MO",
 	"TU",
 	"WE",
 	"TH",
 	"FR"
-], dt = {
+], ft = {
 	1: "first",
 	2: "second",
 	3: "third",
 	4: "fourth",
 	"-1": "last"
-}, ft = {
+}, pt = {
 	DAILY: "days",
 	WEEKLY: "weeks",
 	MONTHLY: "months",
 	YEARLY: "years"
 };
-function pt(e) {
+function mt(e) {
 	let t = Math.ceil(e.getDate() / 7), n = e.getDate() + 7 > m(e.getFullYear(), e.getMonth());
 	return t >= 5 || n && t === 4 ? -1 : t;
 }
-function mt(e, t) {
+function ht(e, t) {
 	let n = {
 		freq: "NONE",
 		interval: 1,
@@ -1610,24 +1667,24 @@ function mt(e, t) {
 		...n,
 		interval: r.interval
 	};
-	return a.freq = r.freq === "DAILY" && i.length === 5 && ut.every((e) => i.some((t) => t.code === e)) ? "WEEKDAYS" : r.freq, r.freq === "WEEKLY" && i.length && (a.byDay = i.map((e) => e.code)), r.freq === "MONTHLY" && i.length && i[0].n && (a.monthly = "weekday"), r.count ? (a.ends = "count", a.count = r.count) : r.until && (a.ends = "until", a.until = D(r.until)), a;
+	return a.freq = r.freq === "DAILY" && i.length === 5 && dt.every((e) => i.some((t) => t.code === e)) ? "WEEKDAYS" : r.freq, r.freq === "WEEKLY" && i.length && (a.byDay = i.map((e) => e.code)), r.freq === "MONTHLY" && i.length && i[0].n && (a.monthly = "weekday"), r.count ? (a.ends = "count", a.count = r.count) : r.until && (a.ends = "until", a.until = D(r.until)), a;
 }
-function ht(e, t) {
+function gt(e, t) {
 	if (e.freq === "NONE") return null;
 	let n = e.freq === "WEEKDAYS" ? {
 		freq: "DAILY",
-		byDay: ut
+		byDay: dt
 	} : {
 		freq: e.freq,
 		interval: Math.max(1, +e.interval || 1)
 	};
-	if (e.freq === "WEEKLY" && (n.byDay = e.byDay.length ? e.byDay : [O[t.getDay()]]), e.freq === "MONTHLY" && e.monthly === "weekday" && (n.byDay = [`${pt(t)}${O[t.getDay()]}`]), e.ends === "count" && (n.count = Math.max(1, +e.count || 1)), e.ends === "until" && e.until) {
+	if (e.freq === "WEEKLY" && (n.byDay = e.byDay.length ? e.byDay : [O[t.getDay()]]), e.freq === "MONTHLY" && e.monthly === "weekday" && (n.byDay = [`${mt(t)}${O[t.getDay()]}`]), e.ends === "count" && (n.count = Math.max(1, +e.count || 1)), e.ends === "until" && e.until) {
 		let t = c(e.until);
 		t && (t.setHours(23, 59, 59), n.until = t);
 	}
 	return P(n);
 }
-var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
+var _t = (e) => new Date(2024, 0, 7 + O.indexOf(e)), vt = class {
 	constructor(e, t, { onSave: n, onDelete: r, onClose: i }) {
 		this.cal = e, this.state = t, this.onSave = n, this.onDelete = r, this.onClose = i;
 		let a = t.instance || t.draft;
@@ -1644,9 +1701,9 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			resourceId: a.resourceId == null ? "" : String(a.resourceId),
 			color: a.color ?? "",
 			notes: a.notes ?? "",
-			repeat: mt(a.rrule, a.start),
+			repeat: ht(a.rrule, a.start),
 			extra: s
-		}, this.el = z("div", {
+		}, this.el = B("div", {
 			class: "ck-overlay",
 			onPointerdown: (e) => e.target === e.currentTarget && this.onClose()
 		}), this.render();
@@ -1666,7 +1723,7 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			start: t,
 			end: n,
 			error: !t || !n ? "Enter a valid start and end." : n <= t ? "End must be after start." : null,
-			rrule: t ? ht(e.repeat, t) : null
+			rrule: t ? gt(e.repeat, t) : null
 		};
 	}
 	set(e, t = !1) {
@@ -1679,13 +1736,13 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 		let { error: e, rrule: t, start: n } = this.values, r = this.el.querySelector(".ck-error");
 		r && (r.textContent = e || "", r.hidden = !e);
 		let i = this.el.querySelector(".ck-hint");
-		i && (i.textContent = t && n ? F(t, n, this.cal.locale) : "");
+		i && (i.textContent = t && n ? I(t, n, this.cal.locale) : "");
 		let a = this.el.querySelector("button[type=\"submit\"]");
 		a && (a.disabled = !!e), this.el.querySelector(".ck-editor")?.style.setProperty("--ck-ev", this.swatch());
 	}
 	swatch() {
 		let e = this.form;
-		return e.color ? H[e.color] || e.color : this.cal.colorOf({
+		return e.color ? U[e.color] || e.color : this.cal.colorOf({
 			...this.src,
 			color: null,
 			resourceId: e.resourceId === "" ? null : this.resolveResourceId(e.resourceId)
@@ -1722,7 +1779,7 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 		} else this.set({ startDate: e }, !0);
 	}
 	render() {
-		We(this.el, () => this.el.replaceChildren(this.build())), this.updateDerived();
+		Ue(this.el, () => this.el.replaceChildren(this.build())), this.updateDerived();
 	}
 	build() {
 		let e = this.cal, { locale: t } = e, n = e.readOnly || !!e.config.editorReadOnly, r = {
@@ -1740,14 +1797,14 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			save: "Save changes",
 			create: "Create event",
 			...e.config.editorLabels || {}
-		}, a = e.config.editorActions || [], o = e.project.resources, s = this.form, { instance: c, isNew: l } = this.state, { start: u, rrule: d } = this.values, f = c && (c.isOccurrence || c.rrule), p = s.repeat, m = (e, t, n = "") => z("label", { class: `ck-field${n}` }, z("span", null, e), t), h = (e, t) => z("input", {
+		}, a = e.config.editorActions || [], o = e.project.resources, s = this.form, { instance: c, isNew: l } = this.state, { start: u, rrule: d } = this.values, f = c && (c.isOccurrence || c.rrule), p = s.repeat, m = (e, t, n = "") => B("label", { class: `ck-field${n}` }, B("span", null, e), t), h = (e, t) => B("input", {
 			"data-key": e,
 			...t
-		}), g = (e, t, n, r) => z("select", {
+		}), g = (e, t, n, r) => B("select", {
 			"data-key": e,
 			value: t,
 			onChange: (e) => r(e.target.value)
-		}, n.map(([e, t]) => z("option", { value: e }, t))), _ = z("div", { class: "ck-field-row ck-when" }, m("Starts", z("span", { class: "ck-inline" }, h("startDate", {
+		}, n.map(([e, t]) => B("option", { value: e }, t))), _ = B("div", { class: "ck-field-row ck-when" }, m("Starts", B("span", { class: "ck-inline" }, h("startDate", {
 			type: "date",
 			value: s.startDate,
 			required: !0,
@@ -1759,7 +1816,7 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			required: !0,
 			disabled: n,
 			onInput: (e) => this.set({ startTime: e.target.value })
-		}))), m("Ends", z("span", { class: "ck-inline" }, h("endDate", {
+		}))), m("Ends", B("span", { class: "ck-inline" }, h("endDate", {
 			type: "date",
 			value: s.endDate,
 			required: !0,
@@ -1771,16 +1828,16 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			required: !0,
 			disabled: n,
 			onInput: (e) => this.set({ endTime: e.target.value })
-		}))), r.allDay && z("label", { class: "ck-check" }, h("allDay", {
+		}))), r.allDay && B("label", { class: "ck-check" }, h("allDay", {
 			type: "checkbox",
 			checked: s.allDay,
 			disabled: n,
 			onChange: (e) => this.set({ allDay: e.target.checked }, !0)
-		}), "All day")), v = z("div", {
+		}), "All day")), v = B("div", {
 			class: "ck-swatches",
 			role: "radiogroup",
 			"aria-label": "Color"
-		}, z("button", {
+		}, B("button", {
 			type: "button",
 			role: "radio",
 			"data-key": "color-auto",
@@ -1789,7 +1846,7 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			title: "Use the assignee's color",
 			"aria-label": "Assignee's color",
 			onClick: () => this.set({ color: "" }, !0)
-		}), Object.entries(H).map(([e, t]) => z("button", {
+		}), Object.entries(U).map(([e, t]) => B("button", {
 			type: "button",
 			role: "radio",
 			"data-key": `color-${e}`,
@@ -1799,14 +1856,14 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			class: `ck-swatch${s.color === e ? " ck-on" : ""}`,
 			style: { background: t },
 			onClick: () => this.set({ color: e }, !0)
-		}))), y = (r.assignee || r.color) && z("div", { class: "ck-field-row" }, r.assignee && o.length > 0 && m(e.config.assigneeLabel || "Assigned to", g("resourceId", s.resourceId, [["", "Unassigned"], ...o.map((e) => [String(e.id), e.name])], (e) => this.set({ resourceId: e }))), r.color && z("div", { class: "ck-field" }, z("span", null, "Color"), v)), b = r.repeat && z("fieldset", { class: "ck-repeat" }, m("Repeat", g("freq", p.freq, [
+		}))), y = (r.assignee || r.color) && B("div", { class: "ck-field-row" }, r.assignee && o.length > 0 && m(e.config.assigneeLabel || "Assigned to", g("resourceId", s.resourceId, [["", "Unassigned"], ...o.map((e) => [String(e.id), e.name])], (e) => this.set({ resourceId: e }))), r.color && B("div", { class: "ck-field" }, B("span", null, "Color"), v)), b = r.repeat && B("fieldset", { class: "ck-repeat" }, m("Repeat", g("freq", p.freq, [
 			["NONE", "Does not repeat"],
 			["DAILY", "Daily"],
 			["WEEKDAYS", "Every weekday (Mon–Fri)"],
 			["WEEKLY", "Weekly"],
 			["MONTHLY", "Monthly"],
 			["YEARLY", "Yearly"]
-		], (e) => this.setRepeat({ freq: e }))), ft[p.freq] && m("Every", z("span", { class: "ck-inline" }, h("interval", {
+		], (e) => this.setRepeat({ freq: e }))), pt[p.freq] && m("Every", B("span", { class: "ck-inline" }, h("interval", {
 			type: "number",
 			min: "1",
 			max: "99",
@@ -1814,17 +1871,17 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			onInput: (e) => {
 				p.interval = e.target.value, this.updateDerived();
 			}
-		}), z("span", { class: "ck-unit" }, ft[p.freq])), " ck-field-narrow"), p.freq === "WEEKLY" && z("div", { class: "ck-field ck-field-wide" }, z("span", null, "On"), z("div", { class: "ck-daypicks" }, lt.map((e) => {
+		}), B("span", { class: "ck-unit" }, pt[p.freq])), " ck-field-narrow"), p.freq === "WEEKLY" && B("div", { class: "ck-field ck-field-wide" }, B("span", null, "On"), B("div", { class: "ck-daypicks" }, ut.map((e) => {
 			let n = p.byDay.includes(e);
-			return z("button", {
+			return B("button", {
 				type: "button",
 				"data-key": `day-${e}`,
 				"aria-pressed": String(n),
 				class: `ck-daypick${n ? " ck-on" : ""}`,
-				title: k(gt(e), { weekday: "long" }, t),
+				title: k(_t(e), { weekday: "long" }, t),
 				onClick: () => this.setRepeat({ byDay: n ? p.byDay.filter((t) => t !== e) : [...p.byDay, e] })
-			}, k(gt(e), { weekday: "narrow" }, t));
-		}))), p.freq === "MONTHLY" && u && m("On", g("monthly", p.monthly, [["day", `Day ${u.getDate()}`], ["weekday", `The ${dt[pt(u)]} ${k(u, { weekday: "long" }, t)}`]], (e) => this.setRepeat({ monthly: e })), " ck-field-wide"), p.freq !== "NONE" && m("Ends", z("span", { class: "ck-inline" }, g("ends", p.ends, [
+			}, k(_t(e), { weekday: "narrow" }, t));
+		}))), p.freq === "MONTHLY" && u && m("On", g("monthly", p.monthly, [["day", `Day ${u.getDate()}`], ["weekday", `The ${ft[mt(u)]} ${k(u, { weekday: "long" }, t)}`]], (e) => this.setRepeat({ monthly: e })), " ck-field-wide"), p.freq !== "NONE" && m("Ends", B("span", { class: "ck-inline" }, g("ends", p.ends, [
 			["never", "Never"],
 			["count", "After"],
 			["until", "On date"]
@@ -1836,25 +1893,25 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			onInput: (e) => {
 				p.count = e.target.value, this.updateDerived();
 			}
-		}), z("span", { class: "ck-unit" }, "times")], p.ends === "until" && h("until", {
+		}), B("span", { class: "ck-unit" }, "times")], p.ends === "until" && h("until", {
 			type: "date",
 			value: p.until,
 			onInput: (e) => {
 				p.until = e.target.value, this.updateDerived();
 			}
-		})), " ck-field-wide"), z("p", {
+		})), " ck-field-wide"), B("p", {
 			class: "ck-hint",
 			"aria-live": "polite"
-		}, d && u ? F(d, u, t) : "")), x = e.config.editorFields, S = x.length > 0 && z("div", { class: "ck-field-grid" }, x.map((e) => {
+		}, d && u ? I(d, u, t) : "")), x = e.config.editorFields, S = x.length > 0 && B("div", { class: "ck-field-grid" }, x.map((e) => {
 			let t = s.extra[e.name], r = (t) => {
 				s.extra[e.name] = t.target.value;
 			}, i, a = n || !!e.readOnly;
-			return i = e.type === "select" ? z("select", {
+			return i = e.type === "select" ? B("select", {
 				"data-key": `x-${e.name}`,
 				value: String(t ?? ""),
 				disabled: a,
 				onChange: r
-			}, z("option", { value: "" }, "—"), (e.options || []).map((e) => z("option", { value: String(e?.value ?? e) }, String(e?.label ?? e)))) : e.type === "textarea" ? z("textarea", {
+			}, B("option", { value: "" }, "—"), (e.options || []).map((e) => B("option", { value: String(e?.value ?? e) }, String(e?.label ?? e)))) : e.type === "textarea" ? B("textarea", {
 				"data-key": `x-${e.name}`,
 				rows: "2",
 				value: t ?? "",
@@ -1867,14 +1924,14 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 				disabled: a,
 				onInput: r
 			}), m(e.label, i, e.type === "textarea" ? " ck-field-wide" : "");
-		})), C = r.notes && m("Notes", z("textarea", {
+		})), C = r.notes && m("Notes", B("textarea", {
 			"data-key": "notes",
 			rows: "3",
 			placeholder: "Agenda, links, call notes",
 			value: s.notes,
 			onInput: (e) => s.notes = e.target.value
 		}), " ck-field-wide");
-		return z("form", {
+		return B("form", {
 			class: "ck-dialog ck-editor",
 			role: "dialog",
 			"aria-modal": "true",
@@ -1885,7 +1942,7 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			onKeydown: (e) => {
 				e.key === "Escape" && (e.stopPropagation(), this.onClose());
 			}
-		}, z("div", { class: "ck-editor-head" }, z("input", {
+		}, B("div", { class: "ck-editor-head" }, B("input", {
 			class: "ck-editor-title",
 			"data-key": "title",
 			placeholder: "Add a title",
@@ -1893,20 +1950,20 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 			value: s.title,
 			disabled: n || !r.title,
 			onInput: (e) => s.title = e.target.value
-		}), z("button", {
+		}), B("button", {
 			type: "button",
 			class: "ck-icon-btn",
 			"aria-label": "Close",
 			onClick: () => this.onClose()
-		}, B(V.close))), z("div", { class: "ck-editor-body" }, _, z("p", {
+		}, V(H.close))), B("div", { class: "ck-editor-body" }, _, B("p", {
 			class: "ck-error",
 			role: "alert",
 			hidden: !0
-		}), y, b, S, C), z("div", { class: "ck-dialog-foot" }, !l && !n && r.delete && z("button", {
+		}), y, b, S, C), B("div", { class: "ck-dialog-foot" }, !l && !n && r.delete && B("button", {
 			type: "button",
 			class: "ck-btn ck-btn-danger",
 			onClick: () => this.onDelete(c)
-		}, f ? `${i.delete}…` : i.delete), a.map((t) => z("button", {
+		}, f ? `${i.delete}…` : i.delete), a.map((t) => B("button", {
 			type: "button",
 			class: "ck-btn",
 			"data-key": `action-${t.key || t.label}`,
@@ -1915,11 +1972,11 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 				editor: this,
 				calendar: e
 			})
-		}, t.label)), z("span", { class: "ck-spacer" }), z("button", {
+		}, t.label)), B("span", { class: "ck-spacer" }), B("button", {
 			type: "button",
 			class: "ck-btn",
 			onClick: () => this.onClose()
-		}, i.cancel), !n && z("button", {
+		}, i.cancel), !n && B("button", {
 			type: "submit",
 			class: "ck-btn ck-btn-primary"
 		}, l ? i.create : i.save)));
@@ -1928,16 +1985,16 @@ var gt = (e) => new Date(2024, 0, 7 + O.indexOf(e)), _t = class {
 		this.el.remove();
 	}
 };
-function vt(e, { kind: t = "edit", allowThis: n = !0 } = {}) {
+function yt(e, { kind: t = "edit", allowThis: n = !0 } = {}) {
 	return new Promise((r) => {
 		let i = n ? "this" : "future", a = t === "delete" ? "Delete" : "Change", o, s = (e) => {
 			o.remove(), r(e);
-		}, c = (e, t) => z("label", null, z("input", {
+		}, c = (e, t) => B("label", null, B("input", {
 			type: "radio",
 			name: "ck-scope",
 			checked: i === e,
 			onChange: () => i = e
-		}), ` ${t}`), l = z("form", {
+		}), ` ${t}`), l = B("form", {
 			class: "ck-dialog ck-scope",
 			role: "dialog",
 			"aria-modal": "true",
@@ -1948,15 +2005,15 @@ function vt(e, { kind: t = "edit", allowThis: n = !0 } = {}) {
 			onKeydown: (e) => {
 				e.key === "Escape" && (e.stopPropagation(), s(null));
 			}
-		}, z("h2", { class: "ck-dialog-title" }, `${a} recurring event`), z("div", { class: "ck-scope-options" }, n && c("this", "This event"), c("future", "This and following events"), c("all", "All events in the series")), z("div", { class: "ck-dialog-foot" }, z("span", { class: "ck-spacer" }), z("button", {
+		}, B("h2", { class: "ck-dialog-title" }, `${a} recurring event`), B("div", { class: "ck-scope-options" }, n && c("this", "This event"), c("future", "This and following events"), c("all", "All events in the series")), B("div", { class: "ck-dialog-foot" }, B("span", { class: "ck-spacer" }), B("button", {
 			type: "button",
 			class: "ck-btn",
 			onClick: () => s(null)
-		}, "Cancel"), z("button", {
+		}, "Cancel"), B("button", {
 			type: "submit",
 			class: `ck-btn ${t === "delete" ? "ck-btn-danger-solid" : "ck-btn-primary"}`
 		}, t === "delete" ? "Delete" : "Save")));
-		o = z("div", {
+		o = B("div", {
 			class: "ck-overlay",
 			onPointerdown: (e) => e.target === e.currentTarget && s(null)
 		}, l), e.appendChild(o), setTimeout(() => l.querySelector("input:checked")?.focus(), 0);
@@ -1964,7 +2021,7 @@ function vt(e, { kind: t = "edit", allowThis: n = !0 } = {}) {
 }
 //#endregion
 //#region src/core/layout.js
-function yt(e, t, n, { minDurationMinutes: r = 20 } = {}) {
+function bt(e, t, n, { minDurationMinutes: r = 20 } = {}) {
 	let a = (n - t) / i, o = e.filter((e) => e.start < n && (e.end > t || +e.end == +e.start && e.start >= t)).map((e) => {
 		let o = Math.max(0, (e.start - t) / i), s = Math.min(a, (e.end - t) / i);
 		return s - o < r && (s = Math.min(a, o + r)), {
@@ -1992,7 +2049,7 @@ function yt(e, t, n, { minDurationMinutes: r = 20 } = {}) {
 	for (let e of o) e.startMin >= l ? (u(), l = e.endMin) : l = Math.max(l, e.endMin), c.push(e);
 	return u(), s;
 }
-function X(e, t, n) {
+function xt(e, t, n) {
 	let r = p(t, n), i = e.filter((e) => e.start < r && (e.end > t || +e.end == +e.start && e.start >= t)).map((e) => {
 		let i = Math.max(0, y(e.start, t)), a = y(new Date(Math.max(+e.start, e.end - 1)), t);
 		return {
@@ -2023,7 +2080,7 @@ function X(e, t, n) {
 		laneCount: a.length
 	};
 }
-function bt(e) {
+function St(e) {
 	let t = [...e].sort((e, t) => e.start - t.start || t.end - t.start - (e.end - e.start)), n = [], r = [];
 	for (let e of t) {
 		let t = n.findIndex((t) => t <= e.start);
@@ -2037,7 +2094,7 @@ function bt(e) {
 		laneCount: Math.max(1, n.length)
 	};
 }
-function Z(e, t) {
+function Ct(e, t) {
 	let n = 0, r = e.length - 1;
 	if (r < 0) return -1;
 	for (; n < r;) {
@@ -2075,9 +2132,9 @@ function Q(e, { onStart: t, onMove: n, onEnd: r, onCancel: i, threshold: a = 4, 
 }
 //#endregion
 //#region src/ui/views/TimeGridView.js
-var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
+var wt = (e) => e.allDay || e.end - e.start >= 864e5, Tt = class {
 	constructor(e) {
-		this.cal = e, this.el = z("div", { class: "ck-tg" }), this.scrollEl = z("div", {
+		this.cal = e, this.el = B("div", { class: "ck-tg" }), this.scrollEl = B("div", {
 			class: "ck-tg-scroll",
 			onScroll: () => this._top = this.scrollEl.scrollTop
 		}), this._top = null, this.colEls = [], this.ghost = null;
@@ -2086,14 +2143,14 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 		let e = this.cal, { config: t, instances: n, locale: r, readOnly: i } = e, a = e.range.days, o = a.length, { dayStartHour: s, dayEndHour: c, workingHours: l, workingDays: u } = t, { hourHeight: d, allDayLane: f } = e.metrics;
 		this.days = a, this.n = o, this.rowStart = a[0], this.winStartMin = s * 60, this.winEndMin = c * 60;
 		let p = (e) => this.px(e), m = e.now(), h = [], g = [], _ = [];
-		for (let e of n) (q(e) ? _ : xt(e) ? h : g).push(e);
-		let y = X(h, this.rowStart, o), b = z("div", { class: "ck-tg-head" }, z("div", { class: "ck-tg-gutter" }), a.map((t) => z("button", {
+		for (let e of n) (J(e) ? _ : wt(e) ? h : g).push(e);
+		let y = xt(h, this.rowStart, o), b = B("div", { class: "ck-tg-head" }, B("div", { class: "ck-tg-gutter" }), a.map((t) => B("button", {
 			type: "button",
 			class: `ck-tg-dayhead${v(t, m) ? " ck-today" : ""}${t.getDay() === 0 || t.getDay() === 6 ? " ck-weekend" : ""}`,
 			title: k(t, { dateStyle: "full" }, r),
 			onClick: () => e.goToDay(t)
-		}, z("span", { class: "ck-tg-dow" }, k(t, { weekday: o === 1 ? "long" : "short" }, r)), z("span", { class: "ck-tg-dom" }, t.getDate())))), C = Math.max(1, y.laneCount) * f + 8;
-		this.allDayInner = z("div", {
+		}, B("span", { class: "ck-tg-dow" }, k(t, { weekday: o === 1 ? "long" : "short" }, r)), B("span", { class: "ck-tg-dom" }, t.getDate())))), C = Math.max(1, y.laneCount) * f + 8;
+		this.allDayInner = B("div", {
 			class: "ck-tg-allday-inner",
 			style: { height: C }
 		}, y.segments.map((t) => {
@@ -2102,45 +2159,45 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 				t.continuesBefore && "ck-cont-before",
 				t.continuesAfter && "ck-cont-after"
 			].filter(Boolean).join(" ");
-			return z("div", Y(e, n, r, {
+			return B("div", X(e, n, r, {
 				left: `calc(${t.startCol / o * 100}% + 2px)`,
 				width: `calc(${(t.endCol - t.startCol + 1) / o * 100}% - 4px)`,
 				top: t.lane * f + 4
-			}, (e) => this.onAllDayDown(e, n, "move")), J(e, n, "week", !0), n.allDay && !i && K(n) && !t.continuesAfter && z("span", {
+			}, (e) => this.onAllDayDown(e, n, "move")), Y(e, n, "week", !0), n.allDay && !i && q(n) && !t.continuesAfter && B("span", {
 				class: "ck-resize ck-resize-x ck-resize-end",
 				onPointerdown: (e) => this.onAllDayDown(e, n, "end")
 			}));
-		})), this.allDayEl = z("div", {
+		})), this.allDayEl = B("div", {
 			class: "ck-tg-allday-cells",
 			style: { height: Math.min(C, 4 * f + 8) },
 			onPointerdown: (e) => this.onAllDayBackgroundDown(e),
 			onDblclick: (e) => this.onAllDayDoubleClick(e)
-		}, a.map((e, t) => z("div", {
+		}, a.map((e, t) => B("div", {
 			class: "ck-tg-allday-cell",
 			style: {
 				left: `${t / o * 100}%`,
 				width: `${100 / o}%`
 			}
 		})), this.allDayInner);
-		let w = z("div", { class: "ck-tg-allday" }, z("div", { class: "ck-tg-gutter ck-tg-allday-label" }, "All day"), this.allDayEl), T = [];
-		for (let e = s + 1; e < c; e++) T.push(z("span", {
+		let w = B("div", { class: "ck-tg-allday" }, B("div", { class: "ck-tg-gutter ck-tg-allday-label" }, "All day"), this.allDayEl), T = [];
+		for (let e = s + 1; e < c; e++) T.push(B("span", {
 			class: "ck-tg-hour",
 			style: { top: p(e * 60) }
 		}, k(new Date(2e3, 0, 1, e), { hour: "numeric" }, r)));
 		let E = x(m);
 		this.colEls = a.map((n) => {
-			let r = S(n, this.winStartMin), a = S(n, this.winEndMin), s = yt(g.filter((e) => e.start < a && e.end > r), r, a), c = _.filter((e) => e.start < a && e.end > r), f = !u.includes(n.getDay()), h = v(n, m);
-			return z("div", {
+			let r = S(n, this.winStartMin), a = S(n, this.winEndMin), s = bt(g.filter((e) => e.start < a && e.end > r), r, a), c = _.filter((e) => e.start < a && e.end > r), f = !u.includes(n.getDay()), h = v(n, m);
+			return B("div", {
 				class: `ck-tg-col${f ? " ck-offday" : ""}${h ? " ck-today" : ""}`,
 				onPointerdown: (e) => this.onColumnDown(e),
 				onDblclick: (e) => this.onColumnDoubleClick(e)
-			}, !f && l && l.start * 60 > this.winStartMin && z("div", {
+			}, !f && l && l.start * 60 > this.winStartMin && B("div", {
 				class: "ck-nonwork",
 				style: {
 					top: 0,
 					height: p(l.start * 60)
 				}
-			}), !f && l && l.end * 60 < this.winEndMin && z("div", {
+			}), !f && l && l.end * 60 < this.winEndMin && B("div", {
 				class: "ck-nonwork",
 				style: {
 					top: p(l.end * 60),
@@ -2148,41 +2205,41 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 				}
 			}), c.map((e) => this.renderBackground(e, n, r, a)), s.map((t) => {
 				let n = t.item, r = t.startMin / 60 * d, a = e.scale || 1, s = Math.max(18 * a, (t.endMin - t.startMin) / 60 * d - 2), c = s < 38 * a;
-				return z("div", Y(e, n, `ck-event-timed${c ? " ck-short" : ""}`, {
+				return B("div", X(e, n, `ck-event-timed${c ? " ck-short" : ""}`, {
 					top: r,
 					height: s,
 					left: `calc(${t.left * 100}% + 1px)`,
 					width: `calc(${t.width * 100}% - ${t.left + t.width >= .999 ? 6 : 2}px)`
-				}, (e) => this.onTimedDown(e, n, "move")), J(e, n, o === 1 ? "day" : "week", c), !i && K(n) && !t.continuesBefore && z("span", {
+				}, (e) => this.onTimedDown(e, n, "move")), Y(e, n, o === 1 ? "day" : "week", c), !i && q(n) && !t.continuesBefore && B("span", {
 					class: "ck-resize ck-resize-y ck-resize-start",
 					onPointerdown: (e) => this.onTimedDown(e, n, "start")
-				}), !i && K(n) && !t.continuesAfter && z("span", {
+				}), !i && q(n) && !t.continuesAfter && B("span", {
 					class: "ck-resize ck-resize-y ck-resize-end",
 					onPointerdown: (e) => this.onTimedDown(e, n, "end")
 				}));
-			}), h && t.nowIndicator !== !1 && E >= this.winStartMin && E <= this.winEndMin && z("div", {
+			}), h && t.nowIndicator !== !1 && E >= this.winStartMin && E <= this.winEndMin && B("div", {
 				class: "ck-now",
 				style: { top: p(E) }
 			}));
 		});
-		let D = z("div", {
+		let D = B("div", {
 			class: "ck-tg-body",
 			style: { height: (this.winEndMin - this.winStartMin) / 60 * d }
-		}, z("div", { class: "ck-tg-gutter ck-tg-hours" }, T), z("div", { class: "ck-tg-cols" }, this.colEls));
+		}, B("div", { class: "ck-tg-gutter ck-tg-hours" }, T), B("div", { class: "ck-tg-cols" }, this.colEls));
 		this.ghost = null, this.el.style.setProperty("--ck-hour", `${d}px`), this.scrollEl.replaceChildren(D), this.el.replaceChildren(b, w, this.scrollEl), this.scrollEl.scrollTop = this._top ?? Math.max(0, (t.scrollToHour - s) * d - 8);
 		let ee = this.scrollEl.offsetWidth - this.scrollEl.clientWidth;
 		b.style.paddingRight = w.style.paddingRight = `${ee > 0 ? ee : 0}px`;
 	}
 	renderBackground(e, t, n, r) {
-		let a = this.cal, o = e.start < n ? n : e.start, s = e.end > r ? r : e.end, c = (o - d(t)) / i, l = (s - d(t)) / i, u = this.px(c), f = Y(a, e, "ck-event-bg", {
+		let a = this.cal, o = e.start < n ? n : e.start, s = e.end > r ? r : e.end, c = (o - d(t)) / i, l = (s - d(t)) / i, u = this.px(c), f = X(a, e, "ck-event-bg", {
 			top: u,
 			height: Math.max(8, this.px(l) - u)
 		}, null);
-		return delete f.onPointerdown, delete f.tabindex, z("div", f, z("button", {
+		return delete f.onPointerdown, delete f.tabindex, B("div", f, B("button", {
 			type: "button",
 			class: "ck-bg-label",
 			onPointerdown: (t) => this.onTimedDown(t, e, "move")
-		}, J(a, e, this.n === 1 ? "day" : "week", !0)), !a.readOnly && K(e) && e.end <= r && z("span", {
+		}, Y(a, e, this.n === 1 ? "day" : "week", !0)), !a.readOnly && q(e) && e.end <= r && B("span", {
 			class: "ck-resize ck-resize-y ck-resize-end",
 			onPointerdown: (t) => this.onTimedDown(t, e, "end")
 		}));
@@ -2215,7 +2272,7 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 		let n = this.days.findIndex((t) => v(t, e.start));
 		if (n === -1) return;
 		let r = this.days[n], a = Math.max(this.winStartMin, (e.start - d(r)) / i), o = Math.min(this.winEndMin, (e.end - d(r)) / i);
-		this.ghost = z("div", {
+		this.ghost = B("div", {
 			class: `ck-event ck-event-timed ck-ghost${t ? "" : " ck-ghost-create"}`,
 			style: {
 				top: this.px(a),
@@ -2224,15 +2281,15 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 				width: "calc(100% - 6px)",
 				"--ck-ev": t ? this.cal.colorOf(t) : "var(--ck-accent)"
 			}
-		}, z("span", { class: "ck-ev-title" }, t?.title || "New event"), z("span", { class: "ck-ev-time" }, j(e.start, e.end, this.cal.locale))), this.colEls[n].appendChild(this.ghost);
+		}, B("span", { class: "ck-ev-title" }, t?.title || "New event"), B("span", { class: "ck-ev-time" }, j(e.start, e.end, this.cal.locale))), this.colEls[n].appendChild(this.ghost);
 	}
 	showAllDayGhost(e, t) {
 		this.clearGhost();
-		let n = X([{
+		let n = xt([{
 			start: e.start,
 			end: e.end
 		}], this.rowStart, this.n).segments[0];
-		n && (this.ghost = z("div", {
+		n && (this.ghost = B("div", {
 			class: "ck-event ck-event-bar ck-ghost",
 			style: {
 				left: `calc(${n.startCol / this.n * 100}% + 2px)`,
@@ -2240,14 +2297,14 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 				top: 4,
 				"--ck-ev": t ? this.cal.colorOf(t) : "var(--ck-accent)"
 			}
-		}, z("span", { class: "ck-ev-title" }, t?.title || "New event")), this.allDayInner.appendChild(this.ghost));
+		}, B("span", { class: "ck-ev-title" }, t?.title || "New event")), this.allDayInner.appendChild(this.ghost));
 	}
 	onTimedDown(e, t, n) {
 		if (e.button !== 0) return;
 		e.stopPropagation();
 		let r = this.cal, a = e.currentTarget.closest(".ck-event");
 		r.hideTooltip(), r.setSelected(t.instanceId);
-		let { snapMinutes: o } = r.config, s = this.hitTimed(e.clientX, e.clientY), c = (S(s.day, s.minutes) - t.start) / i, l = (t.end - t.start) / i, u = !r.readOnly && (n === "move" ? G(t) : K(t)), d = null;
+		let { snapMinutes: o } = r.config, s = this.hitTimed(e.clientX, e.clientY), c = (S(s.day, s.minutes) - t.start) / i, l = (t.end - t.start) / i, u = !r.readOnly && (n === "move" ? K(t) : q(t)), d = null;
 		Q(e, {
 			scrollEl: this.scrollEl,
 			onStart: () => u && a.classList.add("ck-is-dragging"),
@@ -2279,7 +2336,7 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 		let t = this.cal;
 		if (e.button !== 0 || e.target.closest(".ck-event:not(.ck-event-bg), .ck-bg-label, .ck-resize")) return;
 		let { snapMinutes: n } = t.config, r = this.hitTimed(e.clientX, e.clientY), i = (e) => {
-			let i = S(r.day, r.minutes), a = t.instances.find((e) => q(e) && e.start <= i && e.end > i);
+			let i = S(r.day, r.minutes), a = t.instances.find((e) => J(e) && e.start <= i && e.end > i);
 			a ? t.eventClick(a, e) : t.dateClick({
 				date: S(r.day, w(r.minutes, n)),
 				allDay: !1
@@ -2326,7 +2383,7 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 		e.stopPropagation();
 		let r = this.cal, i = e.currentTarget.closest(".ck-event");
 		r.hideTooltip(), r.setSelected(t.instanceId);
-		let a = this.hitAllDay(e.clientX), o = !r.readOnly && (n === "move" ? G(t) : K(t)), s = null;
+		let a = this.hitAllDay(e.clientX), o = !r.readOnly && (n === "move" ? K(t) : q(t)), s = null;
 		Q(e, {
 			onStart: () => o && i.classList.add("ck-is-dragging"),
 			onMove: (e) => {
@@ -2396,30 +2453,30 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 	destroy() {
 		this.el.remove();
 	}
-}, Ct = (e, t, n = 7) => {
+}, Et = (e, t, n = 7) => {
 	let r = d(e), i = n === 1 ? r : p(r, -((r.getDay() - t + 7) % 7));
 	return Array.from({ length: n }, (e, t) => p(i, t));
-}, wt = class {
+}, Dt = class {
 	constructor(e) {
-		this.cal = e, this.headEl = z("div", { class: "ck-month-head" }), this.gridEl = z("div", {
+		this.cal = e, this.headEl = B("div", { class: "ck-month-head" }), this.gridEl = B("div", {
 			class: "ck-month-grid",
 			onPointerdown: (e) => this.onGridDown(e),
 			onDblclick: (e) => this.onGridDoubleClick(e)
-		}), this.el = z("div", { class: "ck-month" }, this.headEl, this.gridEl), this.cellEls = /* @__PURE__ */ new Map();
+		}), this.el = B("div", { class: "ck-month" }, this.headEl, this.gridEl), this.cellEls = /* @__PURE__ */ new Map();
 	}
 	render() {
 		let e = this.cal, { instances: t, locale: n, readOnly: r, config: i } = e, { gridStart: a, weeks: o, month: s } = e.range.grid;
 		this.gridStart = a, this.weeks = o;
 		let c = e.now(), l = this.gridEl.clientHeight, u = l ? l / o : 110, { monthLane: d, monthHeader: f } = e.metrics, m = Math.max(1, Math.floor((u - f - 4) / d));
-		this.headEl.replaceChildren(...Array.from({ length: 7 }, (e, t) => z("div", { class: "ck-month-dow" }, k(p(a, t), { weekday: "short" }, n)))), this.cellEls = /* @__PURE__ */ new Map();
+		this.headEl.replaceChildren(...Array.from({ length: 7 }, (e, t) => B("div", { class: "ck-month-dow" }, k(p(a, t), { weekday: "short" }, n)))), this.cellEls = /* @__PURE__ */ new Map();
 		let h = [];
 		for (let l = 0; l < o; l++) {
-			let o = p(a, l * 7), { segments: u, laneCount: g } = X(t, o, 7), _ = g > m ? m - 1 : m, y = Array(7).fill(0);
+			let o = p(a, l * 7), { segments: u, laneCount: g } = xt(t, o, 7), _ = g > m ? m - 1 : m, y = Array(7).fill(0);
 			for (let e of u) if (e.lane >= _) for (let t = e.startCol; t <= e.endCol; t++) y[t]++;
 			let b = Array.from({ length: 7 }, (t, r) => {
 				let a = p(o, r), l = ["ck-month-cell"];
 				a.getMonth() !== s && l.push("ck-other-month"), i.workingDays.includes(a.getDay()) || l.push("ck-offday");
-				let u = z("div", { class: l.join(" ") }, z("button", {
+				let u = B("div", { class: l.join(" ") }, B("button", {
 					type: "button",
 					class: `ck-month-date${v(a, c) ? " ck-today" : ""}`,
 					title: k(a, { dateStyle: "full" }, n),
@@ -2427,7 +2484,7 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 				}, a.getDate() === 1 ? k(a, {
 					month: "short",
 					day: "numeric"
-				}, n) : a.getDate()), y[r] > 0 && z("button", {
+				}, n) : a.getDate()), y[r] > 0 && B("button", {
 					type: "button",
 					class: "ck-more",
 					style: { top: f + _ * d },
@@ -2437,20 +2494,20 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 			}), x = u.filter((e) => e.lane < _).map((t) => {
 				let n = t.item, i = n.allDay || n.end - n.start >= 864e5 || t.endCol > t.startCol, a = [
 					i ? "ck-event-bar" : "ck-event-line",
-					q(n) && "ck-bg-month",
+					J(n) && "ck-bg-month",
 					t.continuesBefore && "ck-cont-before",
 					t.continuesAfter && "ck-cont-after"
 				].filter(Boolean).join(" ");
-				return z("div", Y(e, n, a, {
+				return B("div", X(e, n, a, {
 					left: `calc(${t.startCol / 7 * 100}% + 3px)`,
 					width: `calc(${(t.endCol - t.startCol + 1) / 7 * 100}% - 6px)`,
 					top: f + t.lane * d
-				}, (e) => this.onEventDown(e, n, "move")), J(e, n, "month", !0), i && n.allDay && !r && K(n) && !t.continuesAfter && z("span", {
+				}, (e) => this.onEventDown(e, n, "move")), Y(e, n, "month", !0), i && n.allDay && !r && q(n) && !t.continuesAfter && B("span", {
 					class: "ck-resize ck-resize-x ck-resize-end",
 					onPointerdown: (e) => this.onEventDown(e, n, "end")
 				}));
 			});
-			h.push(z("div", { class: "ck-month-row" }, b, z("div", { class: "ck-month-events" }, x)));
+			h.push(B("div", { class: "ck-month-row" }, b, B("div", { class: "ck-month-events" }, x)));
 		}
 		this.gridEl.style.gridTemplateRows = `repeat(${o}, 1fr)`, this.gridEl.replaceChildren(...h);
 	}
@@ -2469,7 +2526,7 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 		e.stopPropagation();
 		let r = this.cal, i = e.currentTarget.closest(".ck-event");
 		r.hideTooltip(), r.setSelected(t.instanceId);
-		let a = this.hitDay(e.clientX, e.clientY), o = !r.readOnly && (n === "move" ? G(t) : K(t)), s = null, c = () => {
+		let a = this.hitDay(e.clientX, e.clientY), o = !r.readOnly && (n === "move" ? K(t) : q(t)), s = null, c = () => {
 			this.highlight(null), i.classList.remove("ck-is-dragging");
 		};
 		Q(e, {
@@ -2549,7 +2606,7 @@ var xt = (e) => e.allDay || e.end - e.start >= 864e5, St = class {
 		this.el.remove();
 	}
 };
-function Tt(e, t) {
+function Ot(e, t) {
 	let n = new Date(e.getFullYear(), e.getMonth(), 1), r = p(n, -((n.getDay() - t + 7) % 7)), i = new Date(e.getFullYear(), e.getMonth() + 1, 0);
 	return {
 		gridStart: r,
@@ -2559,12 +2616,12 @@ function Tt(e, t) {
 }
 //#endregion
 //#region src/ui/views/TimelineView.js
-var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boolean).slice(0, 2).map((e) => e[0].toUpperCase()).join(""), Ot = class {
+var kt = 300, $ = "__unassigned__", At = (e = "") => e.split(/\s+/).filter(Boolean).slice(0, 2).map((e) => e[0].toUpperCase()).join(""), jt = class {
 	constructor(e) {
-		this.cal = e, this.innerEl = z("div", { class: "ck-tl-inner" }), this.scrollEl = z("div", {
+		this.cal = e, this.innerEl = B("div", { class: "ck-tl-inner" }), this.scrollEl = B("div", {
 			class: "ck-tl-scroll",
 			onScroll: () => this.onScroll()
-		}, this.innerEl), this.el = z("div", { class: "ck-tl" }, this.scrollEl), this.rows = [], this.ghost = null, this._scrolledFor = null, this._zoom = null, this._window = null, this._rafId = 0, this._pos = null;
+		}, this.innerEl), this.el = B("div", { class: "ck-tl" }, this.scrollEl), this.rows = [], this.ghost = null, this._scrolledFor = null, this._zoom = null, this._window = null, this._rafId = 0, this._pos = null;
 	}
 	get pxPerHour() {
 		return this.cal.zoom * (this.cal.scale || 1);
@@ -2585,7 +2642,7 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 		this.totalW = d;
 		let f = e.now(), m = /* @__PURE__ */ new Map(), h = [];
 		for (let e of n) {
-			if (q(e)) {
+			if (J(e)) {
 				h.push(e);
 				continue;
 			}
@@ -2593,7 +2650,7 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 			m.has(t) || m.set(t, []), m.get(t).push(e);
 		}
 		let g = (e) => h.filter((t) => {
-			let n = Ze(t);
+			let n = Xe(t);
 			return !n || n.includes(e);
 		}), _ = e.visibleResources.map((e) => ({
 			key: e.id,
@@ -2609,7 +2666,7 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 		});
 		let y = 0;
 		for (let e of _) {
-			let { placed: t, laneCount: n } = bt(e.items);
+			let { placed: t, laneCount: n } = St(e.items);
 			e.placed = t, e.height = Math.max(s, n * c + 8), e.top = y, y += e.height;
 		}
 		this.rows = _, this.offsets = _.map((e) => e.top);
@@ -2622,25 +2679,25 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 			24
 		].find((e) => e * u >= 48) || 24, S = Array.from({ length: o }, (e, t) => p(this.rangeStart, t)), C = [];
 		if (x < 24) for (let e = 0; e < o * 24; e += x) C.push(e);
-		let w = z("div", { class: "ck-tl-header" }, z("div", { class: "ck-tl-corner" }, t.resourceLabel), z("div", {
+		let w = B("div", { class: "ck-tl-header" }, B("div", { class: "ck-tl-corner" }, t.resourceLabel), B("div", {
 			class: "ck-tl-scale",
 			style: { width: d }
-		}, z("div", { class: "ck-tl-days" }, S.map((t) => z("button", {
+		}, B("div", { class: "ck-tl-days" }, S.map((t) => B("button", {
 			type: "button",
 			class: `ck-tl-day${v(t, f) ? " ck-today" : ""}`,
 			style: { width: 24 * u },
 			onClick: () => e.goToDay(t)
-		}, z("span", { class: "ck-tl-day-label" }, k(t, {
+		}, B("span", { class: "ck-tl-day-label" }, k(t, {
 			weekday: "short",
 			day: "numeric",
 			month: u < 12 ? void 0 : "short"
-		}, r))))), C.length > 0 && z("div", { class: "ck-tl-hours" }, C.map((e) => z("span", {
+		}, r))))), C.length > 0 && B("div", { class: "ck-tl-hours" }, C.map((e) => B("span", {
 			class: "ck-tl-hour",
 			style: {
 				left: e * u,
 				width: x * u
 			}
-		}, k(new Date(2e3, 0, 1, e % 24), { hour: "numeric" }, r)))))), T = z("div", {
+		}, k(new Date(2e3, 0, 1, e % 24), { hour: "numeric" }, r)))))), T = B("div", {
 			class: "ck-tl-bg",
 			style: {
 				left: l,
@@ -2648,30 +2705,30 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 			}
 		}, S.map((e, t) => {
 			let n = t * 24 * u;
-			return a.includes(e.getDay()) ? i ? [z("div", {
+			return a.includes(e.getDay()) ? i ? [B("div", {
 				class: "ck-nonwork",
 				style: {
 					left: n,
 					width: i.start * u
 				}
-			}), z("div", {
+			}), B("div", {
 				class: "ck-nonwork",
 				style: {
 					left: n + i.end * u,
 					width: (24 - i.end) * u
 				}
-			})] : null : z("div", {
+			})] : null : B("div", {
 				class: "ck-nonwork ck-nonwork-day",
 				style: {
 					left: n,
 					width: 24 * u
 				}
 			});
-		}), t.nowIndicator !== !1 && f >= this.rangeStart && f < this.rangeEnd && z("div", {
+		}), t.nowIndicator !== !1 && f >= this.rangeStart && f < this.rangeEnd && B("div", {
 			class: "ck-now ck-now-v",
 			style: { left: this.xOf(f) }
 		}));
-		this.rowsLayer = z("div", { class: "ck-tl-rows" }), this.bodyEl = z("div", {
+		this.rowsLayer = B("div", { class: "ck-tl-rows" }), this.bodyEl = B("div", {
 			class: "ck-tl-body",
 			style: {
 				height: Math.max(b, 1),
@@ -2680,7 +2737,7 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 			},
 			onPointerdown: (e) => this.onLaneDown(e),
 			onDblclick: (e) => this.onLaneDoubleClick(e)
-		}, T, this.rowsLayer, _.length === 0 && z("div", { class: "ck-empty" }, "No people to show. Add someone, or turn people back on in the filter.")), this.ghost = null, this.el.style.setProperty("--ck-res-w", `${l}px`), this.innerEl.style.width = `${l + d}px`;
+		}, T, this.rowsLayer, _.length === 0 && B("div", { class: "ck-empty" }, "No people to show. Add someone, or turn people back on in the filter.")), this.ghost = null, this.el.style.setProperty("--ck-res-w", `${l}px`), this.innerEl.style.width = `${l + d}px`;
 		let E = this.scrollEl, D = this._pos ? this._pos.left : E.scrollLeft, ee = this._pos ? this._pos.top : E.scrollTop;
 		if (this._zoom && this._zoom !== u) {
 			let e = E.clientWidth - l;
@@ -2700,69 +2757,69 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 		this.el.isConnected && (this._pos = {
 			left: this.scrollEl.scrollLeft,
 			top: this.scrollEl.scrollTop
-		}), !this._rafId && (this._rafId = Ge(() => {
+		}), !this._rafId && (this._rafId = We(() => {
 			this._rafId = 0, this.renderRows();
 		}));
 	}
 	renderRows() {
-		let e = this.cal, { rows: t, offsets: n } = this, r = this.scrollEl, i = r.scrollTop, a = r.clientHeight || 800, o = r.scrollLeft, s = Math.max(0, Z(n, i - Et)), c = Math.max(s, Z(n, i + a + Et)), l = `${s}:${c}:${Math.round(o)}`;
+		let e = this.cal, { rows: t, offsets: n } = this, r = this.scrollEl, i = r.scrollTop, a = r.clientHeight || 800, o = r.scrollLeft, s = Math.max(0, Ct(n, i - kt)), c = Math.max(s, Ct(n, i + a + kt)), l = `${s}:${c}:${Math.round(o)}`;
 		if (this._window === l) return;
 		this._window = l;
 		let { laneHeight: u, resourceColumnWidth: d } = e.metrics, f = this.rangeStart, p = this.rangeEnd, m = [];
 		for (let n = s; n <= c && n < t.length; n++) {
-			let r = t[n], i = r.resource, a = z("div", {
+			let r = t[n], i = r.resource, a = B("div", {
 				class: "ck-tl-res",
-				style: { "--ck-res": U(i?.color) || "var(--ck-muted)" }
+				style: { "--ck-res": W(i?.color) || "var(--ck-muted)" }
 			}, i ? [
-				z("span", {
+				B("span", {
 					class: "ck-avatar",
 					"aria-hidden": "true"
-				}, i.avatar ? z("img", {
+				}, i.avatar ? B("img", {
 					src: i.avatar,
 					alt: ""
-				}) : Dt(i.name)),
-				z("span", { class: "ck-tl-res-text" }, z("span", { class: "ck-tl-res-name" }, i.name), i.role && z("span", { class: "ck-tl-res-role" }, i.role)),
-				z("span", {
+				}) : At(i.name)),
+				B("span", { class: "ck-tl-res-text" }, B("span", { class: "ck-tl-res-name" }, i.name), i.role && B("span", { class: "ck-tl-res-role" }, i.role)),
+				B("span", {
 					class: "ck-tl-res-count",
 					title: `${r.items.length} this period`
 				}, r.items.length || "")
-			] : z("span", { class: "ck-tl-res-text" }, z("span", { class: "ck-tl-res-name" }, "Unassigned"), z("span", { class: "ck-tl-res-role" }, "Drag onto a person to assign"))), s = r.placed.map(({ item: t, lane: n }) => {
+			] : B("span", { class: "ck-tl-res-text" }, B("span", { class: "ck-tl-res-name" }, "Unassigned"), B("span", { class: "ck-tl-res-role" }, "Drag onto a person to assign"))), s = r.placed.map(({ item: t, lane: n }) => {
 				let r = t.start < f ? f : t.start, i = t.end > p ? p : t.end, a = this.xOf(r), s = Math.max(6, this.xOf(i) - a - 2), c = Math.max(0, Math.min(o - a, s - 60)), l = [
 					"ck-event-tl",
 					s < 56 && "ck-narrow",
 					t.start < f && "ck-cont-before",
 					t.end > p && "ck-cont-after"
 				].filter(Boolean).join(" ");
-				return z("div", Y(e, t, l, {
+				return B("div", X(e, t, l, {
 					left: d + a + 1,
 					width: s,
 					top: 4 + n * u,
 					height: u - 4,
 					paddingLeft: c ? c + 10 : null
-				}, (e) => this.onEventDown(e, t, "move")), J(e, t, "timeline", u < 40 * (e.scale || 1)), !e.readOnly && K(t) && t.start >= f && z("span", {
+				}, (e) => this.onEventDown(e, t, "move")), Y(e, t, "timeline", u < 40 * (e.scale || 1)), !e.readOnly && q(t) && t.start >= f && B("span", {
 					class: "ck-resize ck-resize-x ck-resize-start",
 					onPointerdown: (e) => this.onEventDown(e, t, "start")
-				}), !e.readOnly && K(t) && t.end <= p && z("span", {
+				}), !e.readOnly && q(t) && t.end <= p && B("span", {
 					class: "ck-resize ck-resize-x ck-resize-end",
 					onPointerdown: (e) => this.onEventDown(e, t, "end")
 				}));
 			}), c = (r.bg || []).map((t) => {
-				let n = t.start < f ? f : t.start, r = t.end > p ? p : t.end, i = this.xOf(n), a = Y(e, t, "ck-event-bg ck-event-bg-tl", {
+				let n = t.start < f ? f : t.start, r = t.end > p ? p : t.end, i = this.xOf(n), a = X(e, t, "ck-event-bg ck-event-bg-tl", {
 					left: d + i,
 					width: Math.max(4, this.xOf(r) - i),
 					top: 0,
 					bottom: 0
 				}, null);
-				return delete a.onPointerdown, delete a.tabindex, z("div", a, z("button", {
+				return delete a.onPointerdown, delete a.tabindex, B("div", a, B("button", {
 					type: "button",
 					class: "ck-bg-label",
 					onPointerdown: (e) => this.onEventDown(e, t, "move")
-				}, J(e, t, "timeline", !0)), !e.readOnly && K(t) && t.end <= p && z("span", {
+				}, Y(e, t, "timeline", !0)), !e.readOnly && q(t) && t.end <= p && B("span", {
 					class: "ck-resize ck-resize-x ck-resize-end",
 					onPointerdown: (e) => this.onEventDown(e, t, "end")
 				}));
 			});
-			m.push(z("div", {
+			m.push(B("div", {
 				class: `ck-tl-row${r.key === $ ? " ck-tl-unassigned" : ""}`,
 				style: {
 					top: r.top,
@@ -2774,7 +2831,7 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 		this.rowsLayer.replaceChildren(...m);
 	}
 	hit(e, t) {
-		let n = this.bodyEl.getBoundingClientRect(), r = this.cal.metrics.resourceColumnWidth, i = T(e - n.left - r, 0, this.totalW), a = T(Z(this.offsets, t - n.top), 0, Math.max(0, this.rows.length - 1));
+		let n = this.bodyEl.getBoundingClientRect(), r = this.cal.metrics.resourceColumnWidth, i = T(e - n.left - r, 0, this.totalW), a = T(Ct(this.offsets, t - n.top), 0, Math.max(0, this.rows.length - 1));
 		return {
 			time: this.timeAt(i),
 			rowIdx: a,
@@ -2792,7 +2849,7 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 		let n = this.rows[e.rowIdx];
 		if (!n) return;
 		let { laneHeight: r, resourceColumnWidth: i } = this.cal.metrics;
-		this.ghost = z("div", {
+		this.ghost = B("div", {
 			class: `ck-event ck-event-tl ck-ghost${t ? "" : " ck-ghost-create"}`,
 			style: {
 				left: i + this.xOf(e.start) + 1,
@@ -2804,14 +2861,14 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 					resourceId: e.resourceId
 				}) : "var(--ck-accent)"
 			}
-		}, z("span", { class: "ck-ev-title" }, t?.title || "New event"), z("span", { class: "ck-ev-time" }, j(e.start, e.end, this.cal.locale))), this.bodyEl.appendChild(this.ghost);
+		}, B("span", { class: "ck-ev-title" }, t?.title || "New event"), B("span", { class: "ck-ev-time" }, j(e.start, e.end, this.cal.locale))), this.bodyEl.appendChild(this.ghost);
 	}
 	onEventDown(e, t, n) {
 		if (e.button !== 0) return;
 		e.stopPropagation();
 		let r = this.cal, a = e.currentTarget.closest(".ck-event");
 		r.hideTooltip(), r.setSelected(t.instanceId);
-		let { snapMinutes: o } = r.config, s = this.hit(e.clientX, e.clientY), c = s.time - t.start, l = t.end - t.start, u = Math.max(0, q(t) ? s.rowIdx : this.rows.findIndex((e) => e.key === (t.resourceId ?? $))), d = !r.readOnly && (n === "move" ? G(t) || Xe(t) : K(t)), f = Xe(t) && !q(t), p = null, m = (e) => {
+		let { snapMinutes: o } = r.config, s = this.hit(e.clientX, e.clientY), c = s.time - t.start, l = t.end - t.start, u = Math.max(0, J(t) ? s.rowIdx : this.rows.findIndex((e) => e.key === (t.resourceId ?? $))), d = !r.readOnly && (n === "move" ? K(t) || Ye(t) : q(t)), f = Ye(t) && !J(t), p = null, m = (e) => {
 			for (let n of this.rowsLayer.querySelectorAll(".ck-event")) n.dataset.instance === t.instanceId && n.classList.toggle("ck-is-dragging", e);
 			a.classList.toggle("ck-is-dragging", e);
 		};
@@ -2821,7 +2878,7 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 			onMove: (e) => {
 				if (!d) return;
 				let r = this.hit(e.clientX, e.clientY), { start: a, end: s } = t, h = u, g = t.resourceId;
-				n === "move" ? (G(t) && (a = this.snapTime(new Date(r.time - c)), s = new Date(a.getTime() + l)), f && (h = r.rowIdx, g = this.resourceIdOf(r.row))) : n === "end" ? (s = this.snapTime(r.time), s - a < o * 6e4 && (s = new Date(a.getTime() + o * i))) : (a = this.snapTime(r.time), s - a < o * 6e4 && (a = new Date(s.getTime() - o * i))), p = {
+				n === "move" ? (K(t) && (a = this.snapTime(new Date(r.time - c)), s = new Date(a.getTime() + l)), f && (h = r.rowIdx, g = this.resourceIdOf(r.row))) : n === "end" ? (s = this.snapTime(r.time), s - a < o * 6e4 && (s = new Date(a.getTime() + o * i))) : (a = this.snapTime(r.time), s - a < o * 6e4 && (a = new Date(s.getTime() - o * i))), p = {
 					start: a,
 					end: s,
 					rowIdx: h,
@@ -2903,7 +2960,7 @@ var Et = 300, $ = "__unassigned__", Dt = (e = "") => e.split(/\s+/).filter(Boole
 };
 //#endregion
 //#region src/ui/views/ListView.js
-function kt(e, t = "week", n = 1) {
+function Mt(e, t = "week", n = 1) {
 	let r = d(e);
 	if (t === "day") return {
 		start: r,
@@ -2922,9 +2979,9 @@ function kt(e, t = "week", n = 1) {
 		end: p(i, 7)
 	};
 }
-var At = class {
+var Nt = class {
 	constructor(e) {
-		this.cal = e, this.el = z("div", { class: "ck-list" });
+		this.cal = e, this.el = B("div", { class: "ck-list" });
 	}
 	render() {
 		let e = this.cal, { config: t, instances: n, locale: r } = e, { start: i, end: a } = e.range, o = e.now(), s = /* @__PURE__ */ new Map();
@@ -2936,46 +2993,46 @@ var At = class {
 		for (let e = i; e < a; e = p(e, 1)) (t.listShowEmpty || s.has(+e)) && c.push(e);
 		let l = c.map((n) => {
 			let i = s.get(+n) || [];
-			return z("section", { class: `ck-list-day${v(n, o) ? " ck-today" : ""}` }, z("button", {
+			return B("section", { class: `ck-list-day${v(n, o) ? " ck-today" : ""}` }, B("button", {
 				type: "button",
 				class: "ck-list-dayhead",
 				onClick: () => e.dateClick({
 					date: n,
 					allDay: !0
 				})
-			}, z("span", { class: "ck-list-dow" }, k(n, { weekday: "long" }, r)), z("span", { class: "ck-list-date" }, k(n, {
+			}, B("span", { class: "ck-list-dow" }, k(n, { weekday: "long" }, r)), B("span", { class: "ck-list-date" }, k(n, {
 				day: "numeric",
 				month: "long",
 				year: "numeric"
-			}, r)), z("span", { class: "ck-list-count" }, i.length ? String(i.length) : "")), i.length ? z("ul", { class: "ck-list-items" }, i.map((t) => {
-				let n = t.display === "background", i = t.allDay || t.end - t.start >= 864e5 ? "All day" : j(t.start, t.end, r), a = Y(e, t, `ck-event-list${n ? " ck-bg-item" : ""}`, {}, (n) => {
+			}, r)), B("span", { class: "ck-list-count" }, i.length ? String(i.length) : "")), i.length ? B("ul", { class: "ck-list-items" }, i.map((t) => {
+				let n = t.display === "background", i = t.allDay || t.end - t.start >= 864e5 ? "All day" : j(t.start, t.end, r), a = X(e, t, `ck-event-list${n ? " ck-bg-item" : ""}`, {}, (n) => {
 					n.button === 0 && e.setSelected(t.instanceId);
 				});
-				return a.onClick = (n) => e.eventClick(t, n), z("li", a, z("span", { class: "ck-list-time" }, i), z("span", {
+				return a.onClick = (n) => e.eventClick(t, n), B("li", a, B("span", { class: "ck-list-time" }, i), B("span", {
 					class: "ck-list-dot",
 					"aria-hidden": "true"
-				}), z("span", { class: "ck-list-body" }, J(e, t, "list")));
-			})) : z("div", { class: "ck-list-none" }, t.listEmptyText));
+				}), B("span", { class: "ck-list-body" }, Y(e, t, "list")));
+			})) : B("div", { class: "ck-list-none" }, t.listEmptyText));
 		});
-		this.el.replaceChildren(...l.length ? l : [z("div", { class: "ck-empty ck-list-empty" }, t.listEmptyText)]);
+		this.el.replaceChildren(...l.length ? l : [B("div", { class: "ck-empty ck-list-empty" }, t.listEmptyText)]);
 	}
 	destroy() {
 		this.el.remove();
 	}
-}, jt = [
+}, Pt = [
 	"day",
 	"week",
 	"month",
 	"timeline",
 	"list"
-], Mt = [
+], Ft = [
 	"day",
 	"week",
 	"month",
 	"timeline"
-], Nt = H.cobalt, Pt = {
+], It = U.cobalt, Lt = {
 	view: "week",
-	views: Mt,
+	views: Ft,
 	height: 720,
 	readOnly: !1,
 	locale: void 0,
@@ -3003,6 +3060,9 @@ var At = class {
 	laneHeight: 40,
 	resourceColumnWidth: 220,
 	resourceLabel: "People",
+	resourceGroupBy: null,
+	resourceGroupLabel: "Group",
+	resourceSearch: "auto",
 	showSidebar: !0,
 	showUnassigned: !0,
 	showResourceInEvents: !0,
@@ -3030,7 +3090,7 @@ var At = class {
 	editorReadOnly: !1,
 	assigneeLabel: null
 };
-function Ft(e, t, n) {
+function Rt(e, t, n) {
 	let r = {
 		month: "short",
 		day: "numeric",
@@ -3042,34 +3102,34 @@ function Ft(e, t, n) {
 		return `${k(e, r, n)} – ${k(t, r, n)}`;
 	}
 }
-var It = class extends n {
+var zt = class extends n {
 	constructor(e = {}) {
 		super();
 		let { appendTo: t, project: n, crudManager: r, listeners: i, date: a, ...o } = e;
 		if (this.config = {
-			...Pt,
+			...Lt,
 			...o
-		}, this.project = n instanceof Ae ? n : new Ae(n || {}), this._ownsCrud = !1, r instanceof Pe) this.crudManager = r;
+		}, this.project = n instanceof ke ? n : new ke(n || {}), this._ownsCrud = !1, r instanceof Ne) this.crudManager = r;
 		else if (r) {
 			let { autoLoad: e = !0, autoSync: t = !0, ...n } = r;
-			this.crudManager = new Pe(this.project, {
+			this.crudManager = new Ne(this.project, {
 				autoSync: t,
 				...n
 			}), this._ownsCrud = !0, e && this.crudManager.load().catch(() => {});
 		} else this.crudManager = null;
 		for (let [e, t] of Object.entries(i || {})) this.on(e, t);
-		if (this._view = jt.includes(this.config.view) ? this.config.view : "week", this._date = d(a && c(a) || this.now()), this.hiddenResources = /* @__PURE__ */ new Set(), this.sidebarOpen = !0, this.filterCollapsed = !!this.config.resourceFilterCollapsed, this.zoom = this.config.timelineHourWidth, this.selectedId = null, this._views = {}, this._editor = null, this._modal = 0, this._tipTimer = 0, this._rafId = 0, this._cacheKey = null, this._rangeKey = null, this._loadSeq = 0, this.loading = !1, this.toolbarEl = z("div", { class: "ck-toolbar" }), this.sidebarEl = z("aside", { class: "ck-sidebar" }), this.viewEl = z("div", { class: "ck-view" }), this.tooltipEl = z("div", {
+		if (this._view = Pt.includes(this.config.view) ? this.config.view : "week", this._date = d(a && c(a) || this.now()), this.hiddenResources = /* @__PURE__ */ new Set(), this.sidebarOpen = !0, this.filterCollapsed = !!this.config.resourceFilterCollapsed, this.resourceQuery = "", this.resourceGroup = "", this.resourceSort = "name", this.zoom = this.config.timelineHourWidth, this.selectedId = null, this._views = {}, this._editor = null, this._modal = 0, this._tipTimer = 0, this._rafId = 0, this._cacheKey = null, this._rangeKey = null, this._loadSeq = 0, this.loading = !1, this.toolbarEl = B("div", { class: "ck-toolbar" }), this.sidebarEl = B("aside", { class: "ck-sidebar" }), this.viewEl = B("div", { class: "ck-view" }), this.tooltipEl = B("div", {
 			class: "ck-tooltip",
 			role: "tooltip",
 			hidden: !0
-		}), this.el = z("div", {
+		}), this.el = B("div", {
 			class: "ck-root",
 			tabindex: "-1",
 			onKeydown: (e) => this._onKeyDown(e),
 			onPointerdown: (e) => {
 				this.hideTooltip(), e.target.closest(".ck-event, .ck-overlay") || this.setSelected(null);
 			}
-		}, this.toolbarEl, z("div", { class: "ck-main" }, this.sidebarEl, this.viewEl), this.tooltipEl), this.tooltipEl.hidden = !0, this._offProject = this.project.on("change", () => this.refresh()), this._offCrud = this.crudManager ? this.crudManager.on("status", () => this.refresh()) : null, this._clock = setInterval(() => this.refresh(), 6e4), typeof ResizeObserver < "u") {
+		}, this.toolbarEl, B("div", { class: "ck-main" }, this.sidebarEl, this.viewEl), this.tooltipEl), this.tooltipEl.hidden = !0, this._offProject = this.project.on("change", () => this.refresh()), this._offCrud = this.crudManager ? this.crudManager.on("status", () => this.refresh()) : null, this._clock = setInterval(() => this.refresh(), 6e4), typeof ResizeObserver < "u") {
 			let e = "";
 			this._ro = new ResizeObserver(() => {
 				let t = `${this.el.clientWidth}x${this.el.clientHeight}`;
@@ -3084,7 +3144,7 @@ var It = class extends n {
 		return t.appendChild(this.el), this.renderNow(), this;
 	}
 	destroy() {
-		Ke(this._rafId), clearInterval(this._clock), clearTimeout(this._tipTimer), this._ro?.disconnect(), this._offProject?.(), this._offCrud?.(), this._ownsCrud && this.crudManager.destroy(), this._editor?.destroy(), this.el.remove(), this.emit("destroy"), this._listeners.clear();
+		Ge(this._rafId), clearInterval(this._clock), clearTimeout(this._tipTimer), this._ro?.disconnect(), this._offProject?.(), this._offCrud?.(), this._ownsCrud && this.crudManager.destroy(), this._editor?.destroy(), this.el.remove(), this.emit("destroy"), this._listeners.clear();
 	}
 	get view() {
 		return this._view;
@@ -3099,7 +3159,7 @@ var It = class extends n {
 		return this.config.locale;
 	}
 	setView(e) {
-		return !jt.includes(e) || e === this._view ? this : (this._view = e, this.emit("viewChange", {
+		return !Pt.includes(e) || e === this._view ? this : (this._view = e, this.emit("viewChange", {
 			view: e,
 			calendar: this
 		}), this.renderNow());
@@ -3154,7 +3214,7 @@ var It = class extends n {
 		return this.setDate(e), this.config.views.includes("day") && this.setView("day"), this;
 	}
 	setConfig(e) {
-		return Object.assign(this.config, e), "timelineHourWidth" in e && (this.zoom = e.timelineHourWidth), "view" in e && jt.includes(e.view) && e.view !== this._view && (this._view = e.view, this.emit("viewChange", {
+		return Object.assign(this.config, e), "timelineHourWidth" in e && (this.zoom = e.timelineHourWidth), "view" in e && Pt.includes(e.view) && e.view !== this._view && (this._view = e.view, this.emit("viewChange", {
 			view: e.view,
 			calendar: this
 		})), "eventSource" in e && (this._rangeKey = null), this._cacheKey = null, this.renderNow();
@@ -3168,6 +3228,19 @@ var It = class extends n {
 	toggleResourceFilter(e = !this.filterCollapsed) {
 		return this.filterCollapsed = e, this.renderNow();
 	}
+	setResourceQuery(e) {
+		return this.resourceQuery = String(e ?? ""), this.renderNow();
+	}
+	setResourceGroup(e) {
+		return this.resourceGroup = String(e ?? ""), this.renderNow();
+	}
+	setResourceSort(e) {
+		return this.resourceSort = [
+			"name",
+			"name-desc",
+			"group"
+		].includes(e) ? e : "name", this.renderNow();
+	}
 	setResourceVisible(e, t) {
 		return t ? this.hiddenResources.delete(e) : this.hiddenResources.add(e), this._cacheKey = null, this.renderNow();
 	}
@@ -3175,12 +3248,12 @@ var It = class extends n {
 		return this.hiddenResources = new Set(e), this._cacheKey = null, this.renderNow();
 	}
 	refresh() {
-		return this._rafId ||= Ge(() => {
+		return this._rafId ||= We(() => {
 			this._rafId = 0, this._render();
 		}), this;
 	}
 	renderNow() {
-		return this._rafId &&= (Ke(this._rafId), 0), this._render(), this;
+		return this._rafId &&= (Ge(this._rafId), 0), this._render(), this;
 	}
 	openEditor(e) {
 		let t = typeof e == "object" && e?.instanceId ? e : (() => {
@@ -3245,7 +3318,7 @@ var It = class extends n {
 		}), this;
 	}
 	colorOf(e) {
-		return U(e.color) || U(this.resourcesById.get(e.resourceId)?.color) || Nt;
+		return W(e.color) || W(this.resourcesById.get(e.resourceId)?.color) || It;
 	}
 	setSelected(e) {
 		if (this.selectedId !== e) {
@@ -3269,7 +3342,7 @@ var It = class extends n {
 		if (this.readOnly) return !1;
 		if (t && (e === "move" || e === "resize")) {
 			let r = n.start && +n.start != +t.start || n.end && +n.end != +t.end;
-			if (e === "move" && r && !G(t) || e === "resize" && !K(t) || "resourceId" in n && n.resourceId !== t.resourceId && !Xe(t)) return !1;
+			if (e === "move" && r && !K(t) || e === "resize" && !q(t) || "resourceId" in n && n.resourceId !== t.resourceId && !Ye(t)) return !1;
 		}
 		let i = {
 			type: e,
@@ -3281,7 +3354,7 @@ var It = class extends n {
 		};
 		for (let e of [...this._listeners.get("beforeEventChange") || []]) if (await e(i) === !1) return !1;
 		let a = "all";
-		if (t?.isOccurrence && (this._modal++, a = await vt(this.el, {
+		if (t?.isOccurrence && (this._modal++, a = await yt(this.el, {
 			kind: e === "remove" ? "delete" : "edit",
 			allowThis: r
 		}), this._modal--, this.el.focus({ preventScroll: !0 }), !a)) return !1;
@@ -3302,7 +3375,7 @@ var It = class extends n {
 				event: e,
 				calendar: this
 			}) : null;
-			typeof a == "string" && (a = Ve(a)), (a == null || a === !1) && (a = $e(this, e)), t.replaceChildren(...[a].flat(2).filter(Boolean)), t.style.setProperty("--ck-ev", this.colorOf(e)), t.style.left = `${Math.min(r + 14, window.innerWidth - 300)}px`, t.style.top = `${Math.min(i + 16, window.innerHeight - 180)}px`, t.hidden = !1;
+			typeof a == "string" && (a = Be(a)), (a == null || a === !1) && (a = Qe(this, e)), t.replaceChildren(...[a].flat(2).filter(Boolean)), t.style.setProperty("--ck-ev", this.colorOf(e)), t.style.left = `${Math.min(r + 14, window.innerWidth - 300)}px`, t.style.top = `${Math.min(i + 16, window.innerHeight - 180)}px`, t.hidden = !1;
 		}, 450);
 	}
 	hideTooltip() {
@@ -3316,7 +3389,7 @@ var It = class extends n {
 			days: [t]
 		};
 		if (e === "month") {
-			let e = Tt(t, n);
+			let e = Ot(t, n);
 			return {
 				start: e.gridStart,
 				end: p(e.gridStart, e.weeks * 7),
@@ -3330,8 +3403,8 @@ var It = class extends n {
 				end: p(e, r)
 			};
 		}
-		if (e === "list") return kt(t, this.config.listRange, n);
-		let i = Ct(t, n, 7);
+		if (e === "list") return Mt(t, this.config.listRange, n);
+		let i = Et(t, n, 7);
 		return {
 			start: i[0],
 			end: p(i[0], 7),
@@ -3353,11 +3426,11 @@ var It = class extends n {
 			month: "long",
 			day: "numeric",
 			year: "numeric"
-		}, r) : Ft(n.start, p(n.end, -1), r);
+		}, r) : Rt(n.start, p(n.end, -1), r);
 	}
 	_getView(e) {
 		let t = e;
-		return this._views[t] || (e === "month" ? this._views[t] = new wt(this) : e === "timeline" ? this._views[t] = new Ot(this) : e === "list" ? this._views[t] = new At(this) : this._views[t] = new St(this)), this._views[t];
+		return this._views[t] || (e === "month" ? this._views[t] = new Dt(this) : e === "timeline" ? this._views[t] = new jt(this) : e === "list" ? this._views[t] = new Nt(this) : this._views[t] = new Tt(this)), this._views[t];
 	}
 	_render() {
 		if (!this.el.isConnected && !this.el.parentNode) return;
@@ -3373,10 +3446,10 @@ var It = class extends n {
 		}
 		this.title = this._computeTitle(), this._applyScale();
 		let i = this.el;
-		i.className = `ck-root${e.readOnly ? " ck-readonly" : ""}${this.loading ? " ck-loading" : ""}${e.cls ? ` ${e.cls}` : ""}`, i.dataset.theme = e.theme, i.style.height = typeof e.height == "number" ? `${e.height}px` : e.height, We(i, () => {
-			this.toolbarEl.hidden = e.showToolbar === !1, e.showToolbar !== !1 && this.toolbarEl.replaceChildren(...[Ye(this)].flat(2).filter(Boolean));
+		i.className = `ck-root${e.readOnly ? " ck-readonly" : ""}${this.loading ? " ck-loading" : ""}${e.cls ? ` ${e.cls}` : ""}`, i.dataset.theme = e.theme, i.style.height = typeof e.height == "number" ? `${e.height}px` : e.height, Ue(i, () => {
+			this.toolbarEl.hidden = e.showToolbar === !1, e.showToolbar !== !1 && this.toolbarEl.replaceChildren(...[Je(this)].flat(2).filter(Boolean));
 			let t = e.showSidebar && this.sidebarOpen;
-			this.sidebarEl.hidden = !t, t && this.sidebarEl.replaceChildren(...[ct(this)].flat(2).filter(Boolean));
+			this.sidebarEl.hidden = !t, t && this.sidebarEl.replaceChildren(...[lt(this)].flat(2).filter(Boolean));
 		});
 		let a = this._getView(this.view);
 		this.viewEl.firstChild !== a.el && this.viewEl.replaceChildren(a.el), this.viewEl.dataset.view = this.view, a.render();
@@ -3515,7 +3588,7 @@ var It = class extends n {
 		this.hideTooltip(), this._editor?.destroy();
 		let t = () => {
 			this._editor?.destroy(), this._editor = null, this.el.focus({ preventScroll: !0 });
-		}, n = new _t(this, e, {
+		}, n = new vt(this, e, {
 			onClose: t,
 			onSave: async (n) => {
 				let r;
@@ -3566,6 +3639,6 @@ var It = class extends n {
 	}
 };
 //#endregion
-export { It as Calendar, Pe as CrudManager, Pt as DEFAULTS, H as EVENT_COLORS, n as Emitter, _t as EventEditor, et as MINI_DEFAULTS, at as MiniMonth, Ae as Project, vt as askScope, it as buildMiniMonth, G as canMove, Xe as canReassign, K as canResize, Me as createFetchTransport, Ne as createMemoryTransport, r as dates, F as describeRRule, Ue as escapeHtml, he as expandRecurring, Z as findRowIndex, z as h, I as isPhantomId, X as layoutDayRow, bt as layoutLanes, yt as layoutTimeGridColumn, kt as listRange, L as newPhantomId, de as nthWeekdayOfMonth, me as occurrenceStarts, M as parseByDay, N as parseRRule, U as resolveColor, P as stringifyRRule };
+export { zt as Calendar, Ne as CrudManager, Lt as DEFAULTS, U as EVENT_COLORS, n as Emitter, vt as EventEditor, $e as MINI_DEFAULTS, it as MiniMonth, ke as Project, yt as askScope, rt as buildMiniMonth, K as canMove, Ye as canReassign, q as canResize, je as createFetchTransport, Me as createMemoryTransport, r as dates, I as describeRRule, He as escapeHtml, me as expandRecurring, Ct as findRowIndex, B as h, L as isPhantomId, xt as layoutDayRow, St as layoutLanes, bt as layoutTimeGridColumn, Mt as listRange, R as newPhantomId, ue as nthWeekdayOfMonth, pe as occurrenceStarts, M as parseByDay, N as parseRRule, W as resolveColor, P as stringifyRRule };
 
 //# sourceMappingURL=chronokit.js.map

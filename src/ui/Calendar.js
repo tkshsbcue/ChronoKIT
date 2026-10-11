@@ -47,6 +47,12 @@ export const DEFAULTS = {
   laneHeight: 40,
   resourceColumnWidth: 220,
   resourceLabel: 'People',
+  // 0.2.1: the sidebar's people list can be searched, narrowed to a group and sorted.
+  // resourceGroupBy names the resource field to group by ('role', 'team'…); null for none.
+  resourceGroupBy: null,
+  resourceGroupLabel: 'Group',
+  // 'auto' shows the search box once there are more than 8 people; true / false to force it.
+  resourceSearch: 'auto',
   showSidebar: true,
   showUnassigned: true,
   showResourceInEvents: true,
@@ -120,6 +126,10 @@ export class Calendar extends Emitter {
     this.hiddenResources = new Set();
     this.sidebarOpen = true;
     this.filterCollapsed = !!this.config.resourceFilterCollapsed;
+    // The people list's own search, group and order: they narrow the list, not the calendar.
+    this.resourceQuery = '';
+    this.resourceGroup = '';
+    this.resourceSort = 'name';
     this.zoom = this.config.timelineHourWidth;
     this.selectedId = null;
     this._views = {};
@@ -312,6 +322,24 @@ export class Calendar extends Emitter {
   /** Fold the sidebar's people list away (or open it again); the show / hide choices are kept. */
   toggleResourceFilter(collapsed = !this.filterCollapsed) {
     this.filterCollapsed = collapsed;
+    return this.renderNow();
+  }
+
+  /** Narrow the sidebar's people list by name (or group); the calendar is not filtered by it. */
+  setResourceQuery(query) {
+    this.resourceQuery = String(query ?? '');
+    return this.renderNow();
+  }
+
+  /** Narrow the sidebar's people list to one group ('' for every group). */
+  setResourceGroup(group) {
+    this.resourceGroup = String(group ?? '');
+    return this.renderNow();
+  }
+
+  /** Order the people list: 'name' (A–Z), 'name-desc' (Z–A) or 'group' (by group, then name). */
+  setResourceSort(sort) {
+    this.resourceSort = ['name', 'name-desc', 'group'].includes(sort) ? sort : 'name';
     return this.renderNow();
   }
 
