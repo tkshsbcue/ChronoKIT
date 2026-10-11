@@ -3063,6 +3063,7 @@ var Nt = class {
 	resourceGroupBy: null,
 	resourceGroupLabel: "Group",
 	resourceSearch: "auto",
+	selectMenu: null,
 	showSidebar: !0,
 	showUnassigned: !0,
 	showResourceInEvents: !0,
@@ -3144,7 +3145,7 @@ var zt = class extends n {
 		return t.appendChild(this.el), this.renderNow(), this;
 	}
 	destroy() {
-		Ge(this._rafId), clearInterval(this._clock), clearTimeout(this._tipTimer), this._ro?.disconnect(), this._offProject?.(), this._offCrud?.(), this._ownsCrud && this.crudManager.destroy(), this._editor?.destroy(), this.el.remove(), this.emit("destroy"), this._listeners.clear();
+		Ge(this._rafId), clearInterval(this._clock), clearTimeout(this._tipTimer), this._ro?.disconnect(), this._offProject?.(), this._offCrud?.(), this._ownsCrud && this.crudManager.destroy(), this._editor?.destroy(), this.closeSelectMenu(!1), this.el.remove(), this.emit("destroy"), this._listeners.clear();
 	}
 	get view() {
 		return this._view;
@@ -3283,7 +3284,66 @@ var zt = class extends n {
 			calendar: this
 		};
 		for (let e of [...this._listeners.get("select") || []]) if (e(r) === !1) return this;
-		return this.config.editor === !1 ? this : this.openCreate(e);
+		let i = this.config.selectMenu, a = typeof i == "function" ? i(r) : i;
+		return Array.isArray(a) && a.length ? this.showSelectMenu(r, a) : this.config.editor === !1 ? this : this.openCreate(e);
+	}
+	showSelectMenu(e, t = []) {
+		this.closeSelectMenu();
+		let n = (t || []).filter((e) => e && e.label);
+		if (!n.length) return this;
+		let r = (t) => {
+			this.closeSelectMenu(!1), t.onPick?.(e), this.emit("selectMenuPick", {
+				key: t.key ?? null,
+				info: e,
+				calendar: this
+			});
+		};
+		if (n.length === 1) return r(n[0]), this;
+		let i = n.map((e) => B("button", {
+			type: "button",
+			class: "ck-select-menu-item",
+			role: "menuitem",
+			"data-key": `select-${e.key ?? e.label}`,
+			onClick: () => r(e)
+		}, B("span", { class: "ck-select-menu-label" }, e.label), e.hint ? B("span", { class: "ck-select-menu-hint" }, e.hint) : null)), a = e.allDay ? k(e.start, {
+			weekday: "short",
+			day: "numeric",
+			month: "short"
+		}, this.config.locale) : `${k(e.start, {
+			weekday: "short",
+			day: "numeric",
+			month: "short"
+		}, this.config.locale)} · ${j(e.start, e.end, this.config.locale)}`, o = B("div", {
+			class: "ck-select-menu",
+			role: "menu",
+			"aria-label": `Add at ${a}`
+		}, B("div", { class: "ck-select-menu-when" }, a), ...i), s = (e) => {
+			let t = i.indexOf(document.activeElement);
+			if (e.key === "Escape") e.preventDefault(), this.closeSelectMenu();
+			else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+				e.preventDefault();
+				let n = (t + (e.key === "ArrowDown" ? 1 : -1) + i.length) % i.length;
+				i[n]?.focus();
+			}
+		}, c = (e) => {
+			o.contains(e.target) || this.closeSelectMenu();
+		};
+		o.addEventListener("keydown", s), document.body.appendChild(o);
+		let l = e.domEvent?.clientX ?? null, u = e.domEvent?.clientY ?? null, d = this.el.getBoundingClientRect(), f = o.offsetWidth || 260, p = o.offsetHeight || 140, m = l == null ? d.left + d.width / 2 - f / 2 : l + 8, h = u == null ? d.top + 80 : u + 8;
+		o.style.left = `${Math.max(8, Math.min(m, window.innerWidth - f - 8))}px`, o.style.top = `${Math.max(8, Math.min(h, window.innerHeight - p - 8))}px`;
+		let g = setTimeout(() => {
+			document.addEventListener("pointerdown", c, !0), window.addEventListener("scroll", c, !0);
+		}, 0);
+		return this._selectMenu = {
+			el: o,
+			off: () => {
+				clearTimeout(g), document.removeEventListener("pointerdown", c, !0), window.removeEventListener("scroll", c, !0);
+			}
+		}, i[0]?.focus(), this;
+	}
+	closeSelectMenu(e = !0) {
+		let t = this._selectMenu;
+		return t && (this._selectMenu = null, t.off(), t.el.remove(), e && this.emit("selectMenuClose", { calendar: this })), this;
 	}
 	dateClick(e, t = null) {
 		return this.emit("dateClick", {

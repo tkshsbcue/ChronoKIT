@@ -1933,3 +1933,62 @@ body.ck-body-dragging * {
   color: var(--ck-muted);
   font-size: calc(13px * var(--ck-scale, 1));
 }
+
+/* ---------------------------------------------------------------- select menu (0.2.2) */
+/* What a dragged-over time becomes: a small menu where the drag ended. */
+.ck-select-menu {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: calc(4px * var(--ck-scale, 1));
+  min-width: calc(240px * var(--ck-scale, 1));
+  max-width: calc(320px * var(--ck-scale, 1));
+  padding: calc(8px * var(--ck-scale, 1));
+  border: 1px solid var(--ck-line, #e1e4ea);
+  border-radius: calc(10px * var(--ck-scale, 1));
+  background: var(--ck-bg, #fff);
+  color: var(--ck-ink, #1b2230);
+  box-shadow: 0 8px 28px rgba(16, 24, 40, 0.16);
+  font-family: var(--ck-font, inherit);
+}
+
+.ck-select-menu-when {
+  padding: calc(2px * var(--ck-scale, 1)) calc(8px * var(--ck-scale, 1)) calc(4px * var(--ck-scale, 1));
+  color: var(--ck-muted, #667085);
+  font-size: calc(12px * var(--ck-scale, 1));
+  font-weight: 600;
+}
+
+.ck-select-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: calc(8px * var(--ck-scale, 1)) calc(10px * var(--ck-scale, 1));
+  border: 1px solid transparent;
+  border-radius: calc(8px * var(--ck-scale, 1));
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ck-select-menu-item:hover,
+.ck-select-menu-item:focus-visible {
+  outline: none;
+  border-color: var(--ck-accent, #2b59c3);
+  background: color-mix(in srgb, var(--ck-accent, #2b59c3) 7%, var(--ck-bg, #fff));
+}
+
+.ck-select-menu-label {
+  font-size: calc(14px * var(--ck-scale, 1));
+  font-weight: 700;
+}
+
+.ck-select-menu-hint {
+  color: var(--ck-muted, #667085);
+  font-size: calc(12px * var(--ck-scale, 1));
+}

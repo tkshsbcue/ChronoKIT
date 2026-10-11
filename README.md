@@ -230,6 +230,23 @@ Add listeners with `calendar.on(name, fn)` (it returns an unsubscribe function) 
 | `editorOpen` | `{ editor, instance?, draft?, isNew }` | |
 | `select` | `{ start, end, allDay, resourceId, source, domEvent }` | Empty time picked by dragging across it (`source: 'drag'`) or double-clicking (`'dblclick'`). Return `false` to stop the editor, e.g. to open your own booking form |
 | `dateClick` | `{ date, allDay, resourceId, domEvent }` | A single click on empty space (also fires when `readOnly` and on touch) |
+| `selectMenuPick` | `{ key, info }` | 0.2.2: a choice from the `selectMenu` was picked (its `onPick(info)` has run) |
+| `selectMenuClose` | | 0.2.2: the `selectMenu` closed without a choice (Escape, a click elsewhere, scrolling) |
+
+### Asking what a picked time becomes (0.2.2)
+
+`selectMenu` turns a drag over empty time into a small menu where the drag ended, so one calendar can create more than one kind of thing:
+
+```js
+new Calendar({
+  selectMenu: [
+    { key: 'appointment', label: 'Appointment', hint: 'Book a patient into this time', onPick: (info) => openBooking(info) },
+    { key: 'session', label: 'Session', hint: 'Open a clinic at this time', onPick: (info) => openSession(info) },
+  ],
+});
+```
+
+`info` is the `select` payload (`start`, `end`, `allDay`, `resourceId`). It may also be a function `(info) => items` (or `null` for none) to decide per time or person. A single item runs at once; none falls through to the editor. `calendar.showSelectMenu(info, items)` opens it yourself (e.g. from a `select` listener) and `calendar.closeSelectMenu()` closes it. The menu has `role="menu"`, takes focus, moves with the arrow keys and closes on Escape.
 | `rangeChange` | `{ start, end, view }` | The visible range changed (also fired once on mount) |
 | `load` / `loadError` / `loading` | `{ start, end }` / `{ error }` / `{ loading }` | `eventSource` progress |
 | `destroy` | | |

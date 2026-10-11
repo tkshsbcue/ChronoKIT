@@ -10,7 +10,7 @@
 import { Emitter } from '../core/emitter.js';
 import { Project } from '../core/project.js';
 import { CrudManager } from '../core/crud.js';
-import { addDays, addMonths, clamp, format, startOfDay, startOfWeek, toDate } from '../core/date.js';
+import { addDays, addMonths, clamp, format, formatTimeRange, startOfDay, startOfWeek, toDate } from '../core/date.js';
 import { h, keepFocus, raf, cancelRaf, fromHTML } from './dom.js';
 import { buildToolbar } from './Toolbar.js';
 import { buildSidebar } from './Sidebar.js';
@@ -53,6 +53,10 @@ export const DEFAULTS = {
   resourceGroupLabel: 'Group',
   // 'auto' shows the search box once there are more than 8 people; true / false to force it.
   resourceSearch: 'auto',
+  // 0.2.2: what a time dragged over on empty space can become, offered as a small menu where the drag ended.
+  // An array of { key, label, hint?, onPick(info) }, or a function (info) => that array (or null for none).
+  // One item runs at once; two or more are offered; none falls through to the editor.
+  selectMenu: null,
   showSidebar: true,
   showUnassigned: true,
   showResourceInEvents: true,
@@ -203,6 +207,7 @@ export class Calendar extends Emitter {
     this._offCrud?.();
     if (this._ownsCrud) this.crudManager.destroy();
     this._editor?.destroy();
+    this.closeSelectMenu(false);
     this.el.remove();
     this.emit('destroy');
     this._listeners.clear();
@@ -401,8 +406,94 @@ export class Calendar extends Emitter {
     for (const fn of [...(this._listeners.get('select') || [])]) {
       if (fn(info) === false) return this;
     }
+    const menu = this.config.selectMenu;
+    const items = typeof menu === 'function' ? menu(info) : menu;
+    if (Array.isArray(items) && items.length) return this.showSelectMenu(info, items);
     if (this.config.editor === false) return this;
     return this.openCreate(draft);
+  }
+
+  /**
+   * Ask what a picked time becomes: a small menu at the pointer (or the
+   * middle of the calendar) listing `items` ({ key, label, hint?, onPick }).
+   * Picking one calls its onPick(info) and fires `selectMenuPick`
+   * ({ key, info }); Escape, a click elsewhere or scrolling away closes it
+   * (`selectMenuClose`). A single item is run straight away.
+   */
+  showSelectMenu(info, items = []) {
+    this.closeSelectMenu();
+    const list = (items || []).filter((item) => item && item.label);
+    if (!list.length) return this;
+    const pick = (item) => {
+      this.closeSelectMenu(false);
+      item.onPick?.(info);
+      this.emit('selectMenuPick', { key: item.key ?? null, info, calendar: this });
+    };
+    if (list.length === 1) {
+      pick(list[0]);
+      return this;
+    }
+    const buttons = list.map((item) =>
+      h(
+        'button',
+        { type: 'button', class: 'ck-select-menu-item', role: 'menuitem', 'data-key': `select-${item.key ?? item.label}`, onClick: () => pick(item) },
+        h('span', { class: 'ck-select-menu-label' }, item.label),
+        item.hint ? h('span', { class: 'ck-select-menu-hint' }, item.hint) : null,
+      ),
+    );
+    const when = info.allDay ? format(info.start, { weekday: 'short', day: 'numeric', month: 'short' }, this.config.locale) : `${format(info.start, { weekday: 'short', day: 'numeric', month: 'short' }, this.config.locale)} · ${formatTimeRange(info.start, info.end, this.config.locale)}`;
+    const menuEl = h('div', { class: 'ck-select-menu', role: 'menu', 'aria-label': `Add at ${when}` }, h('div', { class: 'ck-select-menu-when' }, when), ...buttons);
+    const onKey = (e) => {
+      const i = buttons.indexOf(document.activeElement);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        this.closeSelectMenu();
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const next = (i + (e.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+        buttons[next]?.focus();
+      }
+    };
+    const onOutside = (e) => {
+      if (!menuEl.contains(e.target)) this.closeSelectMenu();
+    };
+    menuEl.addEventListener('keydown', onKey);
+    document.body.appendChild(menuEl);
+    const x = info.domEvent?.clientX ?? null;
+    const y = info.domEvent?.clientY ?? null;
+    const box = this.el.getBoundingClientRect();
+    const width = menuEl.offsetWidth || 260;
+    const height = menuEl.offsetHeight || 140;
+    const left = x == null ? box.left + box.width / 2 - width / 2 : x + 8;
+    const top = y == null ? box.top + 80 : y + 8;
+    menuEl.style.left = `${Math.max(8, Math.min(left, window.innerWidth - width - 8))}px`;
+    menuEl.style.top = `${Math.max(8, Math.min(top, window.innerHeight - height - 8))}px`;
+    // Listened for on the next tick, so the pointerup that ended the drag does not close it at once.
+    const armed = setTimeout(() => {
+      document.addEventListener('pointerdown', onOutside, true);
+      window.addEventListener('scroll', onOutside, true);
+    }, 0);
+    this._selectMenu = {
+      el: menuEl,
+      off: () => {
+        clearTimeout(armed);
+        document.removeEventListener('pointerdown', onOutside, true);
+        window.removeEventListener('scroll', onOutside, true);
+      },
+    };
+    buttons[0]?.focus();
+    return this;
+  }
+
+  /** Close the menu showSelectMenu opened, if any. */
+  closeSelectMenu(announce = true) {
+    const menu = this._selectMenu;
+    if (!menu) return this;
+    this._selectMenu = null;
+    menu.off();
+    menu.el.remove();
+    if (announce) this.emit('selectMenuClose', { calendar: this });
+    return this;
   }
 
   /** A single click on empty space. Fires `dateClick` ({ date, allDay, resourceId }). */
